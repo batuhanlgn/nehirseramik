@@ -8,33 +8,23 @@
 import os
 from datetime import date, time as dtime, datetime, timedelta
 from typing import Optional
-from contextlib import contextmanager
 
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from sqlmodel import SQLModel, Field, Relationship, Session, create_engine, select, text
-from dotenv import load_dotenv
+from sqlmodel import SQLModel, Field, Relationship, Session, create_engine, select
 
-# .env dosyasını yükle (tam yol ile)
-from pathlib import Path
-env_path = Path('.') / '.env'
-load_dotenv(dotenv_path=env_path)
+# Try to load .env file, but don't fail if dotenv is not available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available, use environment variables directly
 
 # ============================ CONFIG ============================
 APP_TITLE = "Nehir Atölye Yönetim"
-DEFAULT_DB = "sqlite:///nehir.db"  # env yoksa SQLite fallback
-
-# PostgreSQL bağlantısı (.env dosyasından yüklenir)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://nehir_user:nehir_pass@localhost:5432/nehir")
-
-print(f"� ENV dosyasından okunan: {os.getenv('DATABASE_URL', 'YOK')}")
-print(f"🔗 Kullanılan Database: {DATABASE_URL}")
-
-if "postgresql" in DATABASE_URL:
-    print("✅ PostgreSQL kullanılıyor!")
-else:
-    print("⚠️ SQLite fallback kullanılıyor!")
+DEFAULT_DB = "sqlite:///nehir.db"  # env yoksa SQLite
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB)
 ENGINE = create_engine(DATABASE_URL, echo=False)
 
 DEFAULT_PRICE_COURSE = 500.0
@@ -604,7 +594,6 @@ if "MODELS_CACHE" not in st.session_state:
         default_duration_min: int = Field(default=120)
         default_price: float = Field(default=0.0)
         default_capacity: int = Field(default=DEFAULT_CAPACITY)
-        is_active: bool = Field(default=True)
 
         sessions: list["SessionModel"] = Relationship(back_populates="course")
 
@@ -745,33 +734,10 @@ else:
 
 # ============================ DB INIT ============================
 def init_db():
-    # Create tables
     SQLModel.metadata.create_all(ENGINE)
-    
-    # Migration: Add missing is_active columns
-    try:
-        with get_session() as s:
-            # Check and add is_active to course table if missing
-            s.execute(text("ALTER TABLE course ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
-            s.commit()
-    except Exception:
-        pass  # Column already exists or other error
 
 def get_session() -> Session:
-    session = Session(ENGINE)
-    return session
-
-@contextmanager
-def get_session_context():
-    session = Session(ENGINE)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+    return Session(ENGINE)
 
 # ============================ HELPERS ============================
 METHOD_CHOICES = ["cash", "iban"]
@@ -1478,100 +1444,85 @@ def page_import():
 # ============================ APP ============================
 def seed_minimal():
     with get_session() as s:
-        # Geçici: is_active olmadan kontrol et
-        courses = s.exec(select(Course)).all()
-        if not courses:
+        if not s.exec(select(Course)).first():
             s.add(Course(name="Atölye – Kurs", default_price=DEFAULT_PRICE_COURSE, default_capacity=DEFAULT_CAPACITY))
             s.add(Course(name="Boyama", default_price=DEFAULT_PRICE_BOYAMA, default_capacity=DEFAULT_CAPACITY))
             s.commit()
 
-# ============================ LOGIN ============================
-def check_login():
-    """Basit login kontrolü"""
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
+# ============================ LOGIN SYSTEM ============================
+def login_page():
+    """Login sayfası"""
+    st.set_page_config(page_title="Nehir Seramik - Giriş", page_icon="🏺", layout="centered")
     
-    if not st.session_state.authenticated:
-        # Login sayfası CSS
-        st.markdown("""
-        <style>
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 70vh;
-            flex-direction: column;
-        }
-        .login-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 3rem;
-            text-align: center;
-            max-width: 400px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-        }
-        .login-title {
-            color: white;
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            font-weight: 700;
-        }
-        .login-subtitle {
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 2rem;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    # Custom CSS for login
+    st.markdown("""
+    <style>
+    .main > div {
+        padding-top: 2rem;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    .login-container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        margin-top: 5rem;
+    }
+    .login-title {
+        color: white;
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 2rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="login-container">
+        <h2 class="login-title">🏺 Nehir Seramik</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("### Giriş Yapın")
+        username = st.text_input("Kullanıcı Adı", placeholder="nehir.seramik")
+        password = st.text_input("Şifre", type="password", placeholder="Şifrenizi girin")
         
-        # Login formu
-        st.markdown('<div class="login-container">', unsafe_allow_html=True)
-        st.markdown("""
-        <div class="login-card">
-            <div class="login-title">🎨 Nehir Seramik</div>
-            <div class="login-subtitle">Atölye Yönetim Sistemi</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Streamlit form
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            with st.form("login"):
-                st.markdown("### 🔐 Giriş Yap")
-                username = st.text_input("Kullanıcı Adı")
-                password = st.text_input("Şifre", type="password")
-                login_btn = st.form_submit_button("Giriş", use_container_width=True)
-                
-                if login_btn:
-                    if username == "nehir.seramik" and password == "bernaseda":
-                        st.session_state.authenticated = True
-                        st.success("✅ Giriş başarılı!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Hatalı kullanıcı adı veya şifre!")
-        
-        return False
-    return True
+        if st.button("Giriş Yap", use_container_width=True):
+            if username == "nehir.seramik" and password == "bernaseda":
+                st.session_state.authenticated = True
+                st.session_state.username = username
+                st.rerun()
+            else:
+                st.error("❌ Hatalı kullanıcı adı veya şifre!")
+
+def logout():
+    """Çıkış yapma"""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
 
 def main():
-    # Login kontrolü
-    if not check_login():
+    # Check authentication first
+    if not st.session_state.get("authenticated", False):
+        login_page()
         return
-    
+        
     st.set_page_config(page_title=APP_TITLE, page_icon="🎨", layout="wide")
     load_theme()
     init_db()
     seed_minimal()
 
-    st.sidebar.title("Nehir Atölye")
+    st.sidebar.title("🏺 Nehir Seramik")
+    st.sidebar.write(f"Hoş geldin, {st.session_state.get('username', 'Kullanıcı')}!")
     
-    # Çıkış butonu
+    # Logout button
     if st.sidebar.button("🚪 Çıkış Yap"):
-        st.session_state.authenticated = False
-        st.rerun()
+        logout()
 
     # ⚡ Hızlı öğrenci ekleme
     with st.sidebar.expander("⚡ Hızlı Öğrenci Ekle"):
