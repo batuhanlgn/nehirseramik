@@ -24,9 +24,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Login
-- **Kullanıcı:** nehir.seramik
-- **Şifre:** bernaseda
 
----
+
 **Nehir Seramik** © 2025
