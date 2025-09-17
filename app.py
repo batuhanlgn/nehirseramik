@@ -8,6 +8,7 @@
 import os
 from datetime import date, time as dtime, datetime, timedelta
 from typing import Optional
+from contextlib import contextmanager
 
 import pandas as pd
 import streamlit as st
@@ -757,7 +758,20 @@ def init_db():
         pass  # Column already exists or other error
 
 def get_session() -> Session:
-    return Session(ENGINE)
+    session = Session(ENGINE)
+    return session
+
+@contextmanager
+def get_session_context():
+    session = Session(ENGINE)
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 # ============================ HELPERS ============================
 METHOD_CHOICES = ["cash", "iban"]
