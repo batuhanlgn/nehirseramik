@@ -566,84 +566,108 @@ def load_theme():
     )
 
 
-# ============================ GLOBAL MODELS ============================
-class Person(SQLModel, table=True):
-    __tablename__ = "person"
-    __table_args__ = {"extend_existing": True}
+# ============================ CACHED MODELS ============================
+@st.cache_resource
+def get_models():
+    """Create models only once per app session"""
+    
+    class Person(SQLModel, table=True):
+        __tablename__ = "person"
+        __table_args__ = {"extend_existing": True}
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    phone: Optional[str] = Field(default=None, unique=True)
-    instagram: Optional[str] = None
-    first_visit: Optional[date] = None
-    notes: Optional[str] = None
-    is_active: bool = Field(default=True)
+        id: Optional[int] = Field(default=None, primary_key=True)
+        name: str
+        phone: Optional[str] = Field(default=None, unique=True)
+        instagram: Optional[str] = None
+        first_visit: Optional[date] = None
+        notes: Optional[str] = None
+        is_active: bool = Field(default=True)
 
-    enrollments: list["Enrollment"] = Relationship(back_populates="person")
-    payments: list["Payment"] = Relationship(back_populates="person")
-    pieces: list["Piece"] = Relationship(back_populates="person")
+        enrollments: list["Enrollment"] = Relationship(back_populates="person")
+        payments: list["Payment"] = Relationship(back_populates="person")
+        pieces: list["Piece"] = Relationship(back_populates="person")
 
-class Course(SQLModel, table=True):
-    __tablename__ = "course"
-    __table_args__ = {"extend_existing": True}
+    class Course(SQLModel, table=True):
+        __tablename__ = "course"
+        __table_args__ = {"extend_existing": True}
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    description: Optional[str] = None
-    default_duration_min: int = Field(default=120)
-    default_price: float = Field(default=0.0)
-    default_capacity: int = Field(default=DEFAULT_CAPACITY)
+        id: Optional[int] = Field(default=None, primary_key=True)
+        name: str
+        description: Optional[str] = None
+        default_duration_min: int = Field(default=120)
+        default_price: float = Field(default=0.0)
+        default_capacity: int = Field(default=DEFAULT_CAPACITY)
 
-    sessions: list["SessionModel"] = Relationship(back_populates="course")
+        sessions: list["SessionModel"] = Relationship(back_populates="course")
 
-class SessionModel(SQLModel, table=True):
-    __tablename__ = "sessionmodel"
-    __table_args__ = {"extend_existing": True}
+    class SessionModel(SQLModel, table=True):
+        __tablename__ = "sessionmodel"
+        __table_args__ = {"extend_existing": True}
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    course_id: int = Field(foreign_key="course.id")
-    date: date
-    start_time: dtime
-    end_time: dtime
-    capacity: int = Field(default=DEFAULT_CAPACITY)
-    price_override: Optional[float] = None
-    notes: Optional[str] = None
+        id: Optional[int] = Field(default=None, primary_key=True)
+        course_id: int = Field(foreign_key="course.id")
+        date: date
+        start_time: dtime
+        end_time: dtime
+        capacity: int = Field(default=DEFAULT_CAPACITY)
+        price_override: Optional[float] = None
+        notes: Optional[str] = None
 
-    course: "Course" = Relationship(back_populates="sessions")
-    enrollments: list["Enrollment"] = Relationship(back_populates="session")
+        course: "Course" = Relationship(back_populates="sessions")
+        enrollments: list["Enrollment"] = Relationship(back_populates="session")
 
-class Enrollment(SQLModel, table=True):
-    __tablename__ = "enrollment"
-    __table_args__ = {"extend_existing": True}
+    class Enrollment(SQLModel, table=True):
+        __tablename__ = "enrollment"
+        __table_args__ = {"extend_existing": True}
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    person_id: int = Field(foreign_key="person.id")
-    session_id: int = Field(foreign_key="sessionmodel.id")
-    status: str = Field(default="registered")  # registered|attended|canceled|no_show
-    price_override: Optional[float] = None
-    group_label: Optional[str] = None
-    note: Optional[str] = None
+        id: Optional[int] = Field(default=None, primary_key=True)
+        person_id: int = Field(foreign_key="person.id")
+        session_id: int = Field(foreign_key="sessionmodel.id")
+        status: str = Field(default="registered")
+        price_override: Optional[float] = None
+        group_label: Optional[str] = None
+        note: Optional[str] = None
 
-    person: "Person" = Relationship(back_populates="enrollments")
-    session: "SessionModel" = Relationship(back_populates="enrollments")
+        person: "Person" = Relationship(back_populates="enrollments")
+        session: "SessionModel" = Relationship(back_populates="enrollments")
 
-class Payment(SQLModel, table=True):
-    __tablename__ = "payment"
-    __table_args__ = {"extend_existing": True}
+    class Payment(SQLModel, table=True):
+        __tablename__ = "payment"
+        __table_args__ = {"extend_existing": True}
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    person_id: int = Field(foreign_key="person.id")
-    amount: float
-    method: str  # cash|iban
-    cleared: bool = Field(default=True)
-    date_: date = Field(default_factory=lambda: date.today())
-    note: Optional[str] = None
+        id: Optional[int] = Field(default=None, primary_key=True)
+        person_id: int = Field(foreign_key="person.id")
+        amount: float
+        method: str
+        cleared: bool = Field(default=True)
+        date_: date = Field(default_factory=lambda: date.today())
+        note: Optional[str] = None
 
-    person: "Person" = Relationship(back_populates="payments")
+        person: "Person" = Relationship(back_populates="payments")
+
+    # Return all models
+    return {
+        'Person': Person,
+        'Course': Course, 
+        'SessionModel': SessionModel,
+        'Enrollment': Enrollment,
+        'Payment': Payment
+    }
+
+# Get cached models - use these throughout the app
+MODELS = get_models()
+Person = MODELS['Person']
+Course = MODELS['Course']
+SessionModel = MODELS['SessionModel']
+Enrollment = MODELS['Enrollment']
+Payment = MODELS['Payment']
+
+# Skip all duplicate model definitions below - use cached models only
 
 class Expense(SQLModel, table=True):
     __tablename__ = "expense"
     __table_args__ = {"extend_existing": True}
+    __mapper_args__ = {"registry": SQLModel.registry}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     amount: float
@@ -847,10 +871,15 @@ class StockMovement(SQLModel, table=True):
 
 # ============================ DB INIT ============================
 def init_db():
-    """Initialize database - only create tables once"""
-    if not hasattr(init_db, '_initialized'):
+    """Initialize database - clear metadata first to prevent duplicates"""
+    try:
+        # Clear any existing metadata to prevent duplicates
+        SQLModel.metadata.clear()
+        # Recreate tables
         SQLModel.metadata.create_all(ENGINE)
-        init_db._initialized = True
+    except Exception as e:
+        # If there's an error, just try creating tables normally
+        SQLModel.metadata.create_all(ENGINE)
 
 def get_session() -> Session:
     return Session(ENGINE)
