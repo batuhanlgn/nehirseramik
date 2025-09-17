@@ -583,10 +583,6 @@ def get_models():
         notes: Optional[str] = None
         is_active: bool = Field(default=True)
 
-        enrollments = Relationship(back_populates="person")
-        payments = Relationship(back_populates="person")
-        pieces = Relationship(back_populates="person")
-
     class Course(SQLModel, table=True):
         __tablename__ = "course"
         __table_args__ = {"extend_existing": True}
@@ -597,8 +593,6 @@ def get_models():
         default_duration_min: int = Field(default=120)
         default_price: float = Field(default=0.0)
         default_capacity: int = Field(default=DEFAULT_CAPACITY)
-
-        sessions = Relationship(back_populates="course")
 
     class SessionModel(SQLModel, table=True):
         __tablename__ = "sessionmodel"
@@ -613,9 +607,6 @@ def get_models():
         price_override: Optional[float] = None
         notes: Optional[str] = None
 
-        course = Relationship(back_populates="sessions")
-        enrollments = Relationship(back_populates="session")
-
     class Enrollment(SQLModel, table=True):
         __tablename__ = "enrollment"
         __table_args__ = {"extend_existing": True}
@@ -628,9 +619,6 @@ def get_models():
         group_label: Optional[str] = None
         note: Optional[str] = None
 
-        person = Relationship(back_populates="enrollments")
-        session = Relationship(back_populates="enrollments")
-
     class Payment(SQLModel, table=True):
         __tablename__ = "payment"
         __table_args__ = {"extend_existing": True}
@@ -642,8 +630,6 @@ def get_models():
         cleared: bool = Field(default=True)
         date_: date = Field(default_factory=lambda: date.today())
         note: Optional[str] = None
-
-        person = Relationship(back_populates="payments")
 
     # Return all models
     # === Additional Models ===
@@ -682,9 +668,6 @@ def get_models():
         delivered: bool = Field(default=False)
         delivered_at: Optional[datetime] = None
         note: Optional[str] = None
-        
-        # Person relationship without type annotation to avoid errors
-        person = Relationship(back_populates="pieces")
 
     class Material(SQLModel, table=True):
         __tablename__ = "material"
