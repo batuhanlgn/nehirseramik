@@ -1280,6 +1280,129 @@ def page_courses_sessions():
                             ensure_charge_for_attendance(e.id)
                             st.success("Güncellendi")
 
+def page_notes():
+    st.header("📝 Günlük Notlar")
+    
+    with get_session() as s:
+        # Force table creation if needed
+        try:
+            s.exec(select(DailyNote).limit(1)).all()
+        except Exception:
+            try:
+                from sqlmodel import SQLModel
+                SQLModel.metadata.create_all(ENGINE)
+                st.success("Not tablosu oluşturuldu!")
+            except Exception as e:
+                st.error(f"Tablo oluşturulamadı: {e}")
+                return
+        
+        st.subheader("🆕 Yeni Not Ekle")
+        with st.form("add_note"):
+            note_date = st.date_input("Tarih", value=date.today())
+            note_text = st.text_area("Not", placeholder="Günlük notunuzu buraya yazın...", height=100)
+            submit_note = st.form_submit_button("💾 Notu Kaydet", type="primary")
+            
+        if submit_note and note_text.strip():
+            try:
+                # Check if note exists for this date
+                existing = s.exec(select(DailyNote).where(DailyNote.date_ == note_date)).first()
+                if existing:
+                    st.warning(f"Bu tarih için zaten not var: {existing.note[:50]}...")
+                else:
+                    new_note = DailyNote(date_=note_date, note=note_text.strip())
+                    s.add(new_note)
+                    s.commit()
+                    st.success("Not kaydedildi!")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Hata: {e}")
+        
+        st.subheader("📋 Mevcut Notlar")
+        
+        # Search and filter
+        col1, col2 = st.columns(2)
+        with col1:
+            search_text = st.text_input("Notlarda ara...")
+        with col2:
+            date_filter = st.date_input("Tarih filtresi (boş bırakabilirsiniz)", value=None)
+        
+        # Get notes with filters
+        query = select(DailyNote).order_by(DailyNote.date_.desc())
+        
+        if date_filter:
+            query = query.where(DailyNote.date_ == date_filter)
+        
+        notes = s.exec(query).all()
+        
+        # Filter by search text
+        if search_text:
+            notes = [n for n in notes if search_text.lower() in n.note.lower()]
+        
+        if notes:
+            for note in notes:
+                with st.expander(f"📝 {note.date_.strftime('%d %B %Y (%A)')} - {note.note[:50]}..."):
+                    st.write(f"**Tarih:** {note.date_.strftime('%d %B %Y (%A)')}")
+                    st.write(f"**Not:**")
+                    st.write(note.note)
+                    st.write(f"**Oluşturulma:** {note.created_at.strftime('%d.%m.%Y %H:%M')}")
+                    if note.updated_at != note.created_at:
+                        st.write(f"**Güncellenme:** {note.updated_at.strftime('%d.%m.%Y %H:%M')}")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if st.button("✏️ Düzenle", key=f"edit_{note.id}"):
+                            st.session_state[f"editing_{note.id}"] = True
+                            st.rerun()
+                    
+                    with col2:
+                        if st.button("🗑️ Sil", key=f"delete_{note.id}", type="secondary"):
+                            st.session_state[f"confirm_delete_{note.id}"] = True
+                    
+                    # Edit form
+                    if st.session_state.get(f"editing_{note.id}"):
+                        with st.form(f"edit_form_{note.id}"):
+                            new_date = st.date_input("Tarih", value=note.date_)
+                            new_text = st.text_area("Not", value=note.note, height=100)
+                            
+                            col_save, col_cancel = st.columns(2)
+                            with col_save:
+                                save_edit = st.form_submit_button("💾 Kaydet", type="primary")
+                            with col_cancel:
+                                cancel_edit = st.form_submit_button("❌ İptal")
+                            
+                            if save_edit and new_text.strip():
+                                note.date_ = new_date
+                                note.note = new_text.strip()
+                                note.updated_at = datetime.now()
+                                s.commit()
+                                st.success("Not güncellendi!")
+                                del st.session_state[f"editing_{note.id}"]
+                                st.rerun()
+                            elif cancel_edit:
+                                del st.session_state[f"editing_{note.id}"]
+                                st.rerun()
+                    
+                    # Delete confirmation
+                    if st.session_state.get(f"confirm_delete_{note.id}"):
+                        st.error("Bu notu silmek istediğinizden emin misiniz?")
+                        
+                        col_yes, col_no = st.columns(2)
+                        with col_yes:
+                            if st.button("✅ Evet, Sil", key=f"confirm_yes_{note.id}", type="primary"):
+                                s.delete(note)
+                                s.commit()
+                                st.success("Not silindi!")
+                                del st.session_state[f"confirm_delete_{note.id}"]
+                                st.rerun()
+                        
+                        with col_no:
+                            if st.button("❌ Hayır", key=f"confirm_no_{note.id}"):
+                                del st.session_state[f"confirm_delete_{note.id}"]
+                                st.rerun()
+        else:
+            st.info("Henüz not bulunmuyor. Yukarıdan yeni not ekleyebilirsiniz.")
+
 def page_payments():
     st.header("💰 Tahsilatlar, Harcamalar & Cüzdan")
 
@@ -1717,115 +1840,15 @@ def page_calendar():
         else:
             st.info("Bu tarihte seans bulunmamaktadır.")
         
-        # Daily Note Section
-        st.markdown("---")
-        st.subheader(f"📝 {selected_date.strftime('%d %B %Y')} Günlük Not")
-        
-        # Get existing note for this date
+        # Show daily note if exists (read-only)
         try:
             existing_note = s.exec(select(DailyNote).where(DailyNote.date_ == selected_date)).first()
+            if existing_note:
+                st.markdown("---")
+                st.subheader(f"� {selected_date.strftime('%d %B %Y')} Günlük Not")
+                st.info(existing_note.note)
         except Exception:
-            existing_note = None
-        
-        # Note form
-        with st.form(f"daily_note_form_{selected_date}"):
-            note_text = st.text_area(
-                "Günlük Not", 
-                value=existing_note.note if existing_note else "",
-                placeholder="Bu güne ait notlarınızı buraya yazabilirsiniz...",
-                height=100
-            )
-            
-            col_save, col_delete = st.columns([3, 1])
-            with col_save:
-                save_note = st.form_submit_button("💾 Notu Kaydet", type="primary")
-            with col_delete:
-                if existing_note:
-                    delete_note = st.form_submit_button("🗑️ Notu Sil", type="secondary")
-                else:
-                    delete_note = False
-        
-        # Handle note operations
-        if save_note and note_text.strip():
-            try:
-                with get_session() as note_session:
-                    # Check if daily_note table exists, if not create it
-                    table_exists = True
-                    try:
-                        note_session.exec(select(DailyNote).limit(1)).all()
-                    except Exception:
-                        # Table doesn't exist, create all tables
-                        table_exists = False
-                        from sqlmodel import SQLModel
-                        SQLModel.metadata.create_all(ENGINE)
-                        st.info("Günlük not tablosu oluşturuldu, lütfen tekrar deneyin.")
-                        st.rerun()
-                        return
-                    
-                    # If table exists, proceed with save operation
-                    if table_exists:
-                        if existing_note:
-                            # Update existing note - get fresh instance in new session
-                            fresh_note = note_session.get(DailyNote, existing_note.id)
-                            if fresh_note:
-                                fresh_note.note = note_text.strip()
-                                fresh_note.updated_at = datetime.now()
-                                note_session.commit()
-                                st.success("Not güncellendi!")
-                        else:
-                            # Create new note
-                            new_note = DailyNote(
-                                date_=selected_date,
-                                note=note_text.strip()
-                            )
-                            note_session.add(new_note)
-                            note_session.commit()
-                            st.success("Not kaydedildi!")
-                        st.rerun()
-            except Exception as e:
-                st.error(f"Not kaydedilirken hata oluştu: {e}")
-                st.info("Sidebar'daki '🔧 Veritabanı Onar' butonunu deneyin.")
-        
-        elif save_note and not note_text.strip() and existing_note:
-            try:
-                with get_session() as note_session:
-                    # If note is empty and there's an existing note, delete it
-                    fresh_note = note_session.get(DailyNote, existing_note.id)
-                    if fresh_note:
-                        note_session.delete(fresh_note)
-                        note_session.commit()
-                        st.success("Not silindi!")
-                        st.rerun()
-            except Exception as e:
-                st.error(f"Not silinirken hata oluştu: {e}")
-        
-        elif delete_note and existing_note:
-            st.session_state[f"confirm_delete_note_{selected_date}"] = True
-        
-        # Delete confirmation
-        if st.session_state.get(f"confirm_delete_note_{selected_date}"):
-            st.error("Bu günün notunu silmek istediğinizden emin misiniz?")
-            
-            col_yes, col_no = st.columns(2)
-            with col_yes:
-                if st.button("✅ Evet, Sil", key=f"confirm_delete_note_yes_{selected_date}", type="primary"):
-                    try:
-                        with get_session() as note_session:
-                            if existing_note:
-                                fresh_note = note_session.get(DailyNote, existing_note.id)
-                                if fresh_note:
-                                    note_session.delete(fresh_note)
-                                    note_session.commit()
-                                    st.success("Not silindi!")
-                        del st.session_state[f"confirm_delete_note_{selected_date}"]
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Not silinirken hata oluştu: {e}")
-            
-            with col_no:
-                if st.button("❌ Hayır, İptal", key=f"confirm_delete_note_no_{selected_date}"):
-                    del st.session_state[f"confirm_delete_note_{selected_date}"]
-                    st.rerun()
+            pass  # Daily note table might not exist yet
 
         # Button to clear selection and show all sessions
         if st.button("🔄 Tüm Seansları Göster"):
@@ -2177,11 +2200,9 @@ def main():
         SQLModel.metadata.clear()
         SQLModel.metadata.create_all(ENGINE)
         seed_minimal()  # Ensure basic data exists
-        st.sidebar.success("🗃️ Veritabanı hazır!")
     except Exception as e:
-        # If DB init fails, show error but continue
-        st.error(f"Veritabanı başlatma hatası: {e}")
-        st.info("Sidebar'da '🔧 Veritabanı Onar' butonunu deneyin.")
+        # If DB init fails, just continue silently
+        pass
         
     # Force dark theme configuration
     st.set_page_config(
@@ -2219,14 +2240,6 @@ def main():
     st.sidebar.title("🏺 Nehir Seramik")
     st.sidebar.write(f"Hoş geldin, {st.session_state.get('username', 'Kullanıcı')}!")
     
-    # DEBUG: Force table creation button (temporary)
-    if st.sidebar.button("🔧 Veritabanı Onar (Geçici)"):
-        try:
-            init_db()
-            st.sidebar.success("Veritabanı tabloları oluşturuldu!")
-        except Exception as e:
-            st.sidebar.error(f"Hata: {e}")
-    
     # Logout button
     if st.sidebar.button("🚪 Çıkış Yap"):
         logout()
@@ -2257,7 +2270,7 @@ def main():
 
     page = st.sidebar.radio(
         "Menü",
-        ["Dashboard", "Kişiler", "Ders/Seans", "Takvim", "Ödemeler", "Parça", "Stok", "Raporlar", "İçe Aktar"],
+        ["Dashboard", "Kişiler", "Ders/Seans", "Takvim", "Notlar", "Ödemeler", "Parça", "Stok", "Raporlar", "İçe Aktar"],
         index=0,
     )
 
@@ -2269,6 +2282,8 @@ def main():
         page_courses_sessions()
     elif page == "Takvim":
         page_calendar()
+    elif page == "Notlar":
+        page_notes()
     elif page == "Ödemeler":
         page_payments()
     elif page == "Parça":
