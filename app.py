@@ -2189,6 +2189,14 @@ def main():
     st.sidebar.title("🏺 Nehir Seramik")
     st.sidebar.write(f"Hoş geldin, {st.session_state.get('username', 'Kullanıcı')}!")
     
+    # DEBUG: Force table creation button (temporary)
+    if st.sidebar.button("🔧 Veritabanı Onar (Geçici)"):
+        try:
+            init_db()
+            st.sidebar.success("Veritabanı tabloları oluşturuldu!")
+        except Exception as e:
+            st.sidebar.error(f"Hata: {e}")
+    
     # Logout button
     if st.sidebar.button("🚪 Çıkış Yap"):
         logout()
