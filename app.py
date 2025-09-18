@@ -6,6 +6,7 @@
 # -------------------------------------------------------------
 
 import os
+import calendar
 from datetime import date, time as dtime, datetime, timedelta
 from typing import Optional
 
@@ -78,6 +79,42 @@ def load_theme():
         --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       }
       
+      /* Force dark mode for all devices */
+      html[data-theme="light"], 
+      html:not([data-theme]),
+      .stApp,
+      [data-testid="stAppViewContainer"],
+      section[data-testid="stSidebar"] {
+        background: #0e1117 !important;
+        color: #ffffff !important;
+      }
+      
+      /* Force dark mode for specific Streamlit components */
+      .stSelectbox > div > div,
+      .stNumberInput > div > div > input,
+      .stTextInput > div > div > input,
+      .stTextArea > div > div > textarea,
+      .stDateInput > div > div > input,
+      .stTimeInput > div > div > input,
+      .stMultiSelect > div > div,
+      .stSlider > div > div > div,
+      .stRadio > div,
+      .stCheckbox > div {
+        background-color: #262730 !important;
+        color: #ffffff !important;
+        border-color: #4a4a5a !important;
+      }
+      
+      /* Force dark sidebar */
+      section[data-testid="stSidebar"] > div {
+        background-color: #262730 !important;
+      }
+      
+      /* Force dark main area */
+      .main .block-container {
+        background: transparent !important;
+      }
+      
       /* Global styles */
       * {
         box-sizing: border-box;
@@ -92,8 +129,8 @@ def load_theme():
       }
       
       body {
-        background: var(--bg-primary);
-        color: var(--text-primary);
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
         min-height: 100vh;
         overflow-x: hidden;
       }
@@ -1308,6 +1345,253 @@ def page_reports():
         attends = s.exec(select(Enrollment).join(SessionModel).where(SessionModel.date >= d1, SessionModel.date <= d2, Enrollment.status == "attended")).all()
     st.metric("Katılan Kişi (unique)", f"{len(set(a.person_id for a in attends))}")
 
+# --------- TAKVİM ---------
+def page_calendar():
+    st.header("📅 Takvim")
+    
+    # Current month/year selection
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_year = st.selectbox("Yıl", range(2024, 2027), index=1)  # Default 2025
+    with col2:
+        selected_month = st.selectbox("Ay", range(1, 13), 
+                                     index=datetime.now().month - 1,
+                                     format_func=lambda x: calendar.month_name[x])
+    
+    # Get sessions for the selected month
+    first_day = date(selected_year, selected_month, 1)
+    # Get last day of month
+    if selected_month == 12:
+        last_day = date(selected_year + 1, 1, 1) - timedelta(days=1)
+    else:
+        last_day = date(selected_year, selected_month + 1, 1) - timedelta(days=1)
+    
+    with get_session() as s:
+        # Get all sessions in the month
+        sessions = s.exec(select(SessionModel).where(
+            SessionModel.date >= first_day,
+            SessionModel.date <= last_day
+        )).all()
+        
+        # Get all courses
+        courses = {c.id: c for c in s.exec(select(Course)).all()}
+        
+        # Get all enrollments for these sessions
+        session_ids = [session.id for session in sessions]
+        enrollments = s.exec(select(Enrollment).where(
+            Enrollment.session_id.in_(session_ids)
+        )).all() if session_ids else []
+        
+        # Get all people for these enrollments
+        person_ids = [e.person_id for e in enrollments]
+        people = {p.id: p for p in s.exec(select(Person).where(
+            Person.id.in_(person_ids)
+        )).all()} if person_ids else {}
+    
+    # Group sessions by date
+    sessions_by_date = {}
+    for session in sessions:
+        session_date = session.date
+        if session_date not in sessions_by_date:
+            sessions_by_date[session_date] = {}
+        
+        session_key = session.id
+        course = courses.get(session.course_id)
+        if not course:
+            continue
+            
+        sessions_by_date[session_date][session_key] = {
+            'session': session,
+            'course': course,
+            'enrollments': []
+        }
+    
+    # Add enrollments to sessions
+    for enrollment in enrollments:
+        session_id = enrollment.session_id
+        person = people.get(enrollment.person_id)
+        
+        # Find the session in our grouped data
+        for session_date, sessions_data in sessions_by_date.items():
+            if session_id in sessions_data:
+                if person:
+                    sessions_data[session_id]['enrollments'].append({
+                        'enrollment': enrollment,
+                        'person': person
+                    })
+                break
+    
+    # Create calendar display
+    cal = calendar.monthcalendar(selected_year, selected_month)
+    
+    st.subheader(f"{calendar.month_name[selected_month]} {selected_year}")
+    
+    # Calendar header (days of week)
+    days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
+    cols = st.columns(7)
+    for i, day in enumerate(days):
+        with cols[i]:
+            st.markdown(f"**{day}**")
+    
+    # Selected day state
+    if 'selected_calendar_date' not in st.session_state:
+        st.session_state.selected_calendar_date = None
+    
+    # Calendar body
+    for week in cal:
+        cols = st.columns(7)
+        for i, day in enumerate(week):
+            with cols[i]:
+                if day == 0:  # Empty day
+                    st.write("")
+                else:
+                    current_date = date(selected_year, selected_month, day)
+                    has_sessions = current_date in sessions_by_date
+                    
+                    # Style the button based on whether it has sessions
+                    if has_sessions:
+                        button_style = "🔴"  # Red circle for days with sessions
+                    else:
+                        button_style = ""
+                    
+                    button_label = f"{button_style} {day}"
+                    
+                    # Create clickable day button
+                    if st.button(button_label, key=f"day_{day}_{selected_month}_{selected_year}"):
+                        st.session_state.selected_calendar_date = current_date
+                        st.rerun()
+    
+    st.markdown("---")
+    
+    # Show sessions for selected date or all sessions if no date selected
+    if st.session_state.selected_calendar_date:
+        selected_date = st.session_state.selected_calendar_date
+        st.subheader(f"📅 {selected_date.strftime('%d %B %Y')} Seansları")
+        
+        if selected_date in sessions_by_date:
+            for session_key, session_data in sessions_by_date[selected_date].items():
+                session = session_data['session']
+                course = session_data['course']
+                enrollments = session_data['enrollments']
+                
+                with st.expander(f"🎨 {course.name} - {session.start_time.strftime('%H:%M')}-{session.end_time.strftime('%H:%M')}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Kapasite:** {session.capacity}")
+                        st.write(f"**Kayıtlı:** {len(enrollments)}")
+                        if session.notes:
+                            st.write(f"**Seans Notu:** {session.notes}")
+                    
+                    with col2:
+                        if session.price_override:
+                            st.write(f"**Fiyat:** ₺{session.price_override}")
+                        else:
+                            st.write(f"**Fiyat:** ₺{course.default_price}")
+                    
+                    if enrollments:
+                        st.write("**Katılımcılar:**")
+                        for i, enroll_data in enumerate(enrollments, 1):
+                            enrollment = enroll_data['enrollment']
+                            person = enroll_data['person']
+                            
+                            status_emoji = {
+                                'registered': '📝',
+                                'attended': '✅', 
+                                'canceled': '❌',
+                                'no_show': '👻'
+                            }.get(enrollment.status, '📝')
+                            
+                            person_info = f"{i}. {status_emoji} **{person.name}**"
+                            if person.phone:
+                                person_info += f" - {person.phone}"
+                            
+                            # Show group label if any
+                            if enrollment.group_label:
+                                person_info += f" - 🏷️ *{enrollment.group_label}*"
+                            
+                            # Show enrollment notes if any
+                            if enrollment.note:
+                                person_info += f"\n   💭 *{enrollment.note}*"
+                            
+                            # Show person notes if any  
+                            if person.notes:
+                                person_info += f"\n   📝 *Kişi Notu: {person.notes}*"
+                            
+                            st.markdown(person_info)
+                    else:
+                        st.info("Bu seansa henüz kimse kayıt olmamış.")
+        else:
+            st.info("Bu tarihte seans bulunmamaktadır.")
+        
+        # Button to clear selection and show all sessions
+        if st.button("🔄 Tüm Seansları Göster"):
+            st.session_state.selected_calendar_date = None
+            st.rerun()
+    
+    else:
+        # Show all sessions for the month
+        st.subheader(f"📅 {calendar.month_name[selected_month]} {selected_year} - Tüm Seanslar")
+        
+        if sessions_by_date:
+            for session_date in sorted(sessions_by_date.keys()):
+                st.write(f"### {session_date.strftime('%d %B %Y (%A)')}")
+                
+                for session_key, session_data in sessions_by_date[session_date].items():
+                    session = session_data['session']
+                    course = session_data['course']
+                    enrollments = session_data['enrollments']
+                    
+                    with st.expander(f"🎨 {course.name} - {session.start_time.strftime('%H:%M')}-{session.end_time.strftime('%H:%M')} ({len(enrollments)} kişi)"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write(f"**Kapasite:** {session.capacity}")
+                            st.write(f"**Kayıtlı:** {len(enrollments)}")
+                            if session.notes:
+                                st.write(f"**Seans Notu:** {session.notes}")
+                        
+                        with col2:
+                            if session.price_override:
+                                st.write(f"**Fiyat:** ₺{session.price_override}")
+                            else:
+                                st.write(f"**Fiyat:** ₺{course.default_price}")
+                        
+                        if enrollments:
+                            st.write("**Katılımcılar:**")
+                            for i, enroll_data in enumerate(enrollments, 1):
+                                enrollment = enroll_data['enrollment']
+                                person = enroll_data['person']
+                                
+                                status_emoji = {
+                                    'registered': '📝',
+                                    'attended': '✅', 
+                                    'canceled': '❌',
+                                    'no_show': '👻'
+                                }.get(enrollment.status, '📝')
+                                
+                                person_info = f"{i}. {status_emoji} **{person.name}**"
+                                if person.phone:
+                                    person_info += f" - {person.phone}"
+                                
+                                # Show group label if any
+                                if enrollment.group_label:
+                                    person_info += f" - 🏷️ *{enrollment.group_label}*"
+                                
+                                # Show enrollment notes if any
+                                if enrollment.note:
+                                    person_info += f"\n   💭 *{enrollment.note}*"
+                                
+                                # Show person notes if any  
+                                if person.notes:
+                                    person_info += f"\n   📝 *Kişi Notu: {person.notes}*"
+                                
+                                st.markdown(person_info)
+                        else:
+                            st.info("Bu seansa henüz kimse kayıt olmamış.")
+                
+                st.markdown("---")
+        else:
+            st.info(f"{calendar.month_name[selected_month]} {selected_year} ayında hiç seans bulunmamaktadır.")
+
 # --------- İÇE AKTAR (Excel) ---------
 def page_import():
     st.header("📥 İçe Aktar (Excel)")
@@ -1512,7 +1796,35 @@ def main():
         login_page()
         return
         
-    st.set_page_config(page_title=APP_TITLE, page_icon="🎨", layout="wide")
+    # Force dark theme configuration
+    st.set_page_config(
+        page_title=APP_TITLE, 
+        page_icon="🎨", 
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    # Force dark mode with additional JavaScript
+    st.markdown("""
+        <script>
+        // Force dark mode
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.body.classList.add('dark-mode');
+        
+        // Override any light mode settings
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (document.documentElement.getAttribute('data-theme') !== 'dark') {
+                        document.documentElement.setAttribute('data-theme', 'dark');
+                    }
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+        </script>
+    """, unsafe_allow_html=True)
+    
     load_theme()
     init_db()
     seed_minimal()
@@ -1539,7 +1851,7 @@ def main():
 
     page = st.sidebar.radio(
         "Menü",
-        ["Dashboard", "Kişiler", "Ders/Seans", "Ödemeler", "Parça", "Stok", "Raporlar", "İçe Aktar"],
+        ["Dashboard", "Kişiler", "Ders/Seans", "Takvim", "Ödemeler", "Parça", "Stok", "Raporlar", "İçe Aktar"],
         index=0,
     )
 
@@ -1549,6 +1861,8 @@ def main():
         page_people()
     elif page == "Ders/Seans":
         page_courses_sessions()
+    elif page == "Takvim":
+        page_calendar()
     elif page == "Ödemeler":
         page_payments()
     elif page == "Parça":
