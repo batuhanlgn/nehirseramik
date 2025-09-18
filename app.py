@@ -1749,6 +1749,16 @@ def page_calendar():
         if save_note and note_text.strip():
             try:
                 with get_session() as note_session:
+                    # Check if daily_note table exists, if not create it
+                    try:
+                        note_session.exec(select(DailyNote).limit(1))
+                    except Exception:
+                        # Table doesn't exist, create all tables
+                        from sqlmodel import SQLModel
+                        SQLModel.metadata.create_all(ENGINE)
+                        st.info("Günlük not tablosu oluşturuldu, tekrar deneyin.")
+                        return
+                    
                     if existing_note:
                         # Update existing note - get fresh instance in new session
                         fresh_note = note_session.get(DailyNote, existing_note.id)
@@ -1769,6 +1779,7 @@ def page_calendar():
                 st.rerun()
             except Exception as e:
                 st.error(f"Not kaydedilirken hata oluştu: {e}")
+                st.info("Sidebar'daki '🔧 Veritabanı Onar' butonunu deneyin.")
         
         elif save_note and not note_text.strip() and existing_note:
             try:
