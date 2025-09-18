@@ -1748,32 +1748,38 @@ def page_calendar():
         # Handle note operations
         if save_note and note_text.strip():
             try:
-                if existing_note:
-                    # Update existing note
-                    existing_note.note = note_text.strip()
-                    existing_note.updated_at = datetime.now()
-                    s.commit()
-                    st.success("Not güncellendi!")
-                else:
-                    # Create new note
-                    new_note = DailyNote(
-                        date_=selected_date,
-                        note=note_text.strip()
-                    )
-                    s.add(new_note)
-                    s.commit()
-                    st.success("Not kaydedildi!")
+                with get_session() as note_session:
+                    if existing_note:
+                        # Update existing note - get fresh instance in new session
+                        fresh_note = note_session.get(DailyNote, existing_note.id)
+                        if fresh_note:
+                            fresh_note.note = note_text.strip()
+                            fresh_note.updated_at = datetime.now()
+                            note_session.commit()
+                            st.success("Not güncellendi!")
+                    else:
+                        # Create new note
+                        new_note = DailyNote(
+                            date_=selected_date,
+                            note=note_text.strip()
+                        )
+                        note_session.add(new_note)
+                        note_session.commit()
+                        st.success("Not kaydedildi!")
                 st.rerun()
             except Exception as e:
                 st.error(f"Not kaydedilirken hata oluştu: {e}")
         
         elif save_note and not note_text.strip() and existing_note:
             try:
-                # If note is empty and there's an existing note, delete it
-                s.delete(existing_note)
-                s.commit()
-                st.success("Not silindi!")
-                st.rerun()
+                with get_session() as note_session:
+                    # If note is empty and there's an existing note, delete it
+                    fresh_note = note_session.get(DailyNote, existing_note.id)
+                    if fresh_note:
+                        note_session.delete(fresh_note)
+                        note_session.commit()
+                        st.success("Not silindi!")
+                        st.rerun()
             except Exception as e:
                 st.error(f"Not silinirken hata oluştu: {e}")
         
@@ -1788,10 +1794,13 @@ def page_calendar():
             with col_yes:
                 if st.button("✅ Evet, Sil", key=f"confirm_delete_note_yes_{selected_date}", type="primary"):
                     try:
-                        if existing_note:
-                            s.delete(existing_note)
-                            s.commit()
-                            st.success("Not silindi!")
+                        with get_session() as note_session:
+                            if existing_note:
+                                fresh_note = note_session.get(DailyNote, existing_note.id)
+                                if fresh_note:
+                                    note_session.delete(fresh_note)
+                                    note_session.commit()
+                                    st.success("Not silindi!")
                         del st.session_state[f"confirm_delete_note_{selected_date}"]
                         st.rerun()
                     except Exception as e:
