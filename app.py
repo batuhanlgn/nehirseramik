@@ -1750,33 +1750,38 @@ def page_calendar():
             try:
                 with get_session() as note_session:
                     # Check if daily_note table exists, if not create it
+                    table_exists = True
                     try:
-                        note_session.exec(select(DailyNote).limit(1))
+                        note_session.exec(select(DailyNote).limit(1)).all()
                     except Exception:
                         # Table doesn't exist, create all tables
+                        table_exists = False
                         from sqlmodel import SQLModel
                         SQLModel.metadata.create_all(ENGINE)
-                        st.info("Günlük not tablosu oluşturuldu, tekrar deneyin.")
+                        st.info("Günlük not tablosu oluşturuldu, lütfen tekrar deneyin.")
+                        st.rerun()
                         return
                     
-                    if existing_note:
-                        # Update existing note - get fresh instance in new session
-                        fresh_note = note_session.get(DailyNote, existing_note.id)
-                        if fresh_note:
-                            fresh_note.note = note_text.strip()
-                            fresh_note.updated_at = datetime.now()
+                    # If table exists, proceed with save operation
+                    if table_exists:
+                        if existing_note:
+                            # Update existing note - get fresh instance in new session
+                            fresh_note = note_session.get(DailyNote, existing_note.id)
+                            if fresh_note:
+                                fresh_note.note = note_text.strip()
+                                fresh_note.updated_at = datetime.now()
+                                note_session.commit()
+                                st.success("Not güncellendi!")
+                        else:
+                            # Create new note
+                            new_note = DailyNote(
+                                date_=selected_date,
+                                note=note_text.strip()
+                            )
+                            note_session.add(new_note)
                             note_session.commit()
-                            st.success("Not güncellendi!")
-                    else:
-                        # Create new note
-                        new_note = DailyNote(
-                            date_=selected_date,
-                            note=note_text.strip()
-                        )
-                        note_session.add(new_note)
-                        note_session.commit()
-                        st.success("Not kaydedildi!")
-                st.rerun()
+                            st.success("Not kaydedildi!")
+                        st.rerun()
             except Exception as e:
                 st.error(f"Not kaydedilirken hata oluştu: {e}")
                 st.info("Sidebar'daki '🔧 Veritabanı Onar' butonunu deneyin.")
