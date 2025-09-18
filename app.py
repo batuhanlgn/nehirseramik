@@ -2156,11 +2156,16 @@ def main():
     
     # Initialize database tables (including new tables)
     try:
-        init_db()
+        # Force metadata recreation and table creation
+        from sqlmodel import SQLModel
+        SQLModel.metadata.clear()
+        SQLModel.metadata.create_all(ENGINE)
         seed_minimal()  # Ensure basic data exists
+        st.sidebar.success("🗃️ Veritabanı hazır!")
     except Exception as e:
         # If DB init fails, show error but continue
         st.error(f"Veritabanı başlatma hatası: {e}")
+        st.info("Sidebar'da '🔧 Veritabanı Onar' butonunu deneyin.")
         
     # Force dark theme configuration
     st.set_page_config(
