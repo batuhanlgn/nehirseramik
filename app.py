@@ -13,7 +13,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from sqlmodel import SQLModel, Field, Relationship, Session, create_engine, select
+from sqlmodel import SQLModel, Field, Relationship, Session, create_engine, select, func
 
 # Try to load .env file, but don't fail if dotenv is not available
 try:
@@ -733,6 +733,16 @@ def get_models():
         date_: date = Field(default_factory=lambda: date.today())
         note: Optional[str] = None
 
+    class DailyNote(SQLModel, table=True):
+        __tablename__ = "daily_note"
+        __table_args__ = {"extend_existing": True}
+
+        id: Optional[int] = Field(default=None, primary_key=True)
+        date_: date = Field(unique=True)  # Her gün için tek not
+        note: str
+        created_at: datetime = Field(default_factory=datetime.now)
+        updated_at: datetime = Field(default_factory=datetime.now)
+
     return {
         'Person': Person,
         'Course': Course, 
@@ -743,7 +753,8 @@ def get_models():
         'Charge': Charge,
         'Piece': Piece,
         'Material': Material,
-        'StockMovement': StockMovement
+        'StockMovement': StockMovement,
+        'DailyNote': DailyNote
     }
 
 # Get cached models - use these throughout the app
@@ -758,6 +769,7 @@ Charge = MODELS['Charge']
 Piece = MODELS['Piece']
 Material = MODELS['Material']
 StockMovement = MODELS['StockMovement']
+DailyNote = MODELS['DailyNote']
 
 # Skip all duplicate model definitions below - use cached models only
 
@@ -1079,15 +1091,105 @@ def page_people():
                 notes = st.text_area("Not")
                 ok = st.form_submit_button("Kaydet")
             if ok and name.strip():
-                s.add(Person(name=name.strip(), phone=(phone.strip() or None), instagram=(ig.strip() or None), first_visit=first, notes=(notes or None)))
-                s.commit(); st.success("Kişi eklendi")
+                # Duplicate check - case insensitive
+                existing = s.exec(
+                    select(Person).where(
+                        (func.lower(Person.name) == func.lower(name.strip())) | 
+                        (Person.phone == phone.strip() if phone.strip() else False)
+                    )
+                ).first()
+                
+                if existing:
+                    st.warning(f"Bu kişi zaten kayıtlı: {existing.name} ({existing.phone or 'Telefon yok'})")
+                else:
+                    s.add(Person(name=name.strip(), phone=(phone.strip() or None), instagram=(ig.strip() or None), first_visit=first, notes=(notes or None)))
+                    s.commit(); st.success("Kişi eklendi")
         q = st.text_input("Ara (isim/tel)")
         people = s.exec(select(Person).order_by(Person.name)).all()
-        df = pd.DataFrame([
-            {"ID": p.id, "Ad": p.name, "Telefon": p.phone, "Instagram": p.instagram, "İlk Geliş": p.first_visit}
-            for p in people if (not q or (q.lower() in (p.name or '').lower() or (q in (p.phone or ''))))
-        ])
-        st.dataframe(df, use_container_width=True)
+        filtered_people = [p for p in people if (not q or (q.lower() in (p.name or '').lower() or (q in (p.phone or ''))))]
+        
+        if filtered_people:
+            st.write(f"**{len(filtered_people)} kişi bulundu:**")
+            
+            # Show people with delete buttons
+            for person in filtered_people:
+                col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
+                
+                with col1:
+                    st.write(f"**{person.name}**")
+                with col2:
+                    st.write(person.phone or "-")
+                with col3:
+                    st.write(person.instagram or "-")
+                with col4:
+                    st.write(str(person.first_visit) if person.first_visit else "-")
+                with col5:
+                    if st.button("✏️", key=f"edit_{person.id}", help="Düzenle"):
+                        st.session_state[f"edit_person_{person.id}"] = True
+                with col6:
+                    if st.button("🗑️", key=f"delete_{person.id}", help="Sil", type="secondary"):
+                        st.session_state[f"confirm_delete_{person.id}"] = True
+                
+                # Edit form
+                if st.session_state.get(f"edit_person_{person.id}"):
+                    with st.form(f"edit_form_{person.id}"):
+                        new_name = st.text_input("Ad Soyad", value=person.name)
+                        new_phone = st.text_input("Telefon", value=person.phone or "")
+                        new_ig = st.text_input("Instagram", value=person.instagram or "")
+                        new_notes = st.text_area("Not", value=person.notes or "")
+                        
+                        col_save, col_cancel = st.columns(2)
+                        with col_save:
+                            save_edit = st.form_submit_button("💾 Kaydet", type="primary")
+                        with col_cancel:
+                            cancel_edit = st.form_submit_button("❌ İptal")
+                        
+                        if save_edit and new_name.strip():
+                            person.name = new_name.strip()
+                            person.phone = new_phone.strip() or None
+                            person.instagram = new_ig.strip() or None
+                            person.notes = new_notes.strip() or None
+                            s.commit()
+                            st.success("Kişi güncellendi!")
+                            del st.session_state[f"edit_person_{person.id}"]
+                            st.rerun()
+                        elif cancel_edit:
+                            del st.session_state[f"edit_person_{person.id}"]
+                            st.rerun()
+                
+                # Delete confirmation
+                if st.session_state.get(f"confirm_delete_{person.id}"):
+                    st.error(f"**{person.name}** kişisini silmek istediğinizden emin misiniz?")
+                    st.write("⚠️ Bu işlem geri alınamaz. Kişinin tüm seans kayıtları ve ödemeleri de silinecek.")
+                    
+                    col_yes, col_no = st.columns(2)
+                    with col_yes:
+                        if st.button("✅ Evet, Sil", key=f"confirm_yes_{person.id}", type="primary"):
+                            # Delete related records first
+                            enrollments = s.exec(select(Enrollment).where(Enrollment.person_id == person.id)).all()
+                            for enrollment in enrollments:
+                                s.delete(enrollment)
+                            
+                            payments = s.exec(select(Payment).where(Payment.person_id == person.id)).all()
+                            for payment in payments:
+                                s.delete(payment)
+                            
+                            # Delete the person
+                            s.delete(person)
+                            s.commit()
+                            
+                            st.success(f"{person.name} başarıyla silindi!")
+                            del st.session_state[f"confirm_delete_{person.id}"]
+                            st.rerun()
+                    
+                    with col_no:
+                        if st.button("❌ Hayır, İptal", key=f"confirm_no_{person.id}"):
+                            del st.session_state[f"confirm_delete_{person.id}"]
+                            st.rerun()
+                
+                st.divider()
+        else:
+            st.info("Kişi bulunamadı.")
 
 def page_courses_sessions():
     st.header("📚 Dersler & Seanslar")
@@ -1110,7 +1212,8 @@ def page_courses_sessions():
                 sdate = st.date_input("Tarih", value=date.today())
                 stime = st.time_input("Başlangıç", value=dtime(10, 0))
                 etime = st.time_input("Bitiş", value=dtime(12, 0))
-                cap = st.number_input("Kapasite", 1, 50, value=(course_sel.default_capacity if course_sel else DEFAULT_CAPACITY))
+                default_cap = course_sel.default_capacity if course_sel else DEFAULT_CAPACITY
+                cap = st.number_input("Kapasite", 1, 50, value=default_cap)
                 sover = st.number_input("Seans Özel Fiyat (TL) – opsiyonel", 0.0, 100000.0, value=0.0, step=50.0)
                 notes = st.text_input("Not (ops)")
                 ok2 = st.form_submit_button("Seans Ekle")
@@ -1387,6 +1490,19 @@ def page_calendar():
         people = {p.id: p for p in s.exec(select(Person).where(
             Person.id.in_(person_ids)
         )).all()} if person_ids else {}
+        
+        # Get all daily notes for the month
+        try:
+            daily_notes = s.exec(select(DailyNote).where(
+                DailyNote.date_ >= first_day,
+                DailyNote.date_ <= last_day
+            )).all()
+            notes_by_date = {note.date_: note for note in daily_notes}
+        except Exception as e:
+            # If daily_note table doesn't exist yet, create empty dict
+            st.info("Günlük notlar henüz kullanılabilir değil. Uygulama yeniden başlatılıyor...")
+            notes_by_date = {}
+        
     
     # Group sessions by date
     sessions_by_date = {}
@@ -1426,6 +1542,12 @@ def page_calendar():
     
     st.subheader(f"{calendar.month_name[selected_month]} {selected_year}")
     
+    # Calendar legend
+    st.markdown("""
+    **Açıklama:** 
+    🔴 Seans bulunan günler | 📝 Not bulunan günler | 🔴📝 Hem seans hem not bulunan günler
+    """)
+    
     # Calendar header (days of week)
     days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
     cols = st.columns(7)
@@ -1447,10 +1569,15 @@ def page_calendar():
                 else:
                     current_date = date(selected_year, selected_month, day)
                     has_sessions = current_date in sessions_by_date
+                    has_note = current_date in notes_by_date
                     
-                    # Style the button based on whether it has sessions
-                    if has_sessions:
-                        button_style = "🔴"  # Red circle for days with sessions
+                    # Style the button based on whether it has sessions and/or notes
+                    if has_sessions and has_note:
+                        button_style = "🔴📝"  # Red circle + note for days with sessions and notes
+                    elif has_sessions:
+                        button_style = "🔴"  # Red circle for days with sessions only
+                    elif has_note:
+                        button_style = "📝"  # Note icon for days with notes only
                     else:
                         button_style = ""
                     
@@ -1475,7 +1602,7 @@ def page_calendar():
                 enrollments = session_data['enrollments']
                 
                 with st.expander(f"🎨 {course.name} - {session.start_time.strftime('%H:%M')}-{session.end_time.strftime('%H:%M')}"):
-                    col1, col2 = st.columns(2)
+                    col1, col2, col3 = st.columns([3, 3, 2])
                     with col1:
                         st.write(f"**Kapasite:** {session.capacity}")
                         st.write(f"**Kayıtlı:** {len(enrollments)}")
@@ -1487,6 +1614,43 @@ def page_calendar():
                             st.write(f"**Fiyat:** ₺{session.price_override}")
                         else:
                             st.write(f"**Fiyat:** ₺{course.default_price}")
+                    
+                    with col3:
+                        if st.button("🗑️ Seansı İptal Et", key=f"cancel_session_{session.id}", type="secondary"):
+                            st.session_state[f"confirm_cancel_session_{session.id}"] = True
+                    
+                    # Session cancellation confirmation
+                    if st.session_state.get(f"confirm_cancel_session_{session.id}"):
+                        st.error(f"**Bu seansı tamamen iptal etmek istediğinizden emin misiniz?**")
+                        st.write(f"📅 {session.date.strftime('%d %B %Y')} - {session.start_time.strftime('%H:%M')}-{session.end_time.strftime('%H:%M')}")
+                        st.write(f"⚠️ Bu işlem geri alınamaz. Seansta kayıtlı {len(enrollments)} kişi çıkarılacak ve seans silinecek.")
+                        
+                        col_yes, col_no = st.columns(2)
+                        with col_yes:
+                            if st.button("✅ Evet, İptal Et", key=f"confirm_cancel_yes_{session.id}", type="primary"):
+                                with get_session() as cancel_session:
+                                    # Delete all enrollments for this session
+                                    session_enrollments = cancel_session.exec(
+                                        select(Enrollment).where(Enrollment.session_id == session.id)
+                                    ).all()
+                                    
+                                    for enrollment in session_enrollments:
+                                        cancel_session.delete(enrollment)
+                                    
+                                    # Delete the session
+                                    session_to_delete = cancel_session.get(SessionModel, session.id)
+                                    if session_to_delete:
+                                        cancel_session.delete(session_to_delete)
+                                    
+                                    cancel_session.commit()
+                                    st.success(f"Seans başarıyla iptal edildi!")
+                                    del st.session_state[f"confirm_cancel_session_{session.id}"]
+                                    st.rerun()
+                        
+                        with col_no:
+                            if st.button("❌ Hayır, İptal Etme", key=f"confirm_cancel_no_{session.id}"):
+                                del st.session_state[f"confirm_cancel_session_{session.id}"]
+                                st.rerun()
                     
                     if enrollments:
                         st.write("**Katılımcılar:**")
@@ -1501,28 +1665,143 @@ def page_calendar():
                                 'no_show': '👻'
                             }.get(enrollment.status, '📝')
                             
-                            person_info = f"{i}. {status_emoji} **{person.name}**"
-                            if person.phone:
-                                person_info += f" - {person.phone}"
+                            # Create columns for person info and remove button
+                            col_person, col_remove = st.columns([10, 1])
                             
-                            # Show group label if any
-                            if enrollment.group_label:
-                                person_info += f" - 🏷️ *{enrollment.group_label}*"
+                            with col_person:
+                                person_info = f"{i}. {status_emoji} **{person.name}**"
+                                if person.phone:
+                                    person_info += f" - {person.phone}"
+                                
+                                # Show group label if any
+                                if enrollment.group_label:
+                                    person_info += f" - 🏷️ *{enrollment.group_label}*"
+                                
+                                # Show enrollment notes if any
+                                if enrollment.note:
+                                    person_info += f"\n   💭 *{enrollment.note}*"
+                                
+                                # Show person notes if any  
+                                if person.notes:
+                                    person_info += f"\n   📝 *Kişi Notu: {person.notes}*"
+                                
+                                st.markdown(person_info)
                             
-                            # Show enrollment notes if any
-                            if enrollment.note:
-                                person_info += f"\n   💭 *{enrollment.note}*"
+                            with col_remove:
+                                if st.button("🗑️", key=f"remove_enrollment_{enrollment.id}", help="Kayıttan Çıkar"):
+                                    st.session_state[f"confirm_remove_enrollment_{enrollment.id}"] = True
                             
-                            # Show person notes if any  
-                            if person.notes:
-                                person_info += f"\n   📝 *Kişi Notu: {person.notes}*"
-                            
-                            st.markdown(person_info)
+                            # Confirmation dialog for removal
+                            if st.session_state.get(f"confirm_remove_enrollment_{enrollment.id}"):
+                                st.error(f"**{person.name}** kişisini bu seanstan çıkarmak istediğinizden emin misiniz?")
+                                
+                                col_yes, col_no = st.columns(2)
+                                with col_yes:
+                                    if st.button("✅ Evet, Çıkar", key=f"confirm_remove_yes_{enrollment.id}", type="primary"):
+                                        with get_session() as remove_session:
+                                            # Find and delete the enrollment
+                                            enrollment_to_remove = remove_session.get(Enrollment, enrollment.id)
+                                            if enrollment_to_remove:
+                                                remove_session.delete(enrollment_to_remove)
+                                                remove_session.commit()
+                                                st.success(f"{person.name} seansdan çıkarıldı!")
+                                                del st.session_state[f"confirm_remove_enrollment_{enrollment.id}"]
+                                                st.rerun()
+                                
+                                with col_no:
+                                    if st.button("❌ Hayır, İptal", key=f"confirm_remove_no_{enrollment.id}"):
+                                        del st.session_state[f"confirm_remove_enrollment_{enrollment.id}"]
+                                        st.rerun()
                     else:
                         st.info("Bu seansa henüz kimse kayıt olmamış.")
         else:
             st.info("Bu tarihte seans bulunmamaktadır.")
         
+        # Daily Note Section
+        st.markdown("---")
+        st.subheader(f"📝 {selected_date.strftime('%d %B %Y')} Günlük Not")
+        
+        # Get existing note for this date
+        try:
+            existing_note = s.exec(select(DailyNote).where(DailyNote.date_ == selected_date)).first()
+        except Exception:
+            existing_note = None
+        
+        # Note form
+        with st.form(f"daily_note_form_{selected_date}"):
+            note_text = st.text_area(
+                "Günlük Not", 
+                value=existing_note.note if existing_note else "",
+                placeholder="Bu güne ait notlarınızı buraya yazabilirsiniz...",
+                height=100
+            )
+            
+            col_save, col_delete = st.columns([3, 1])
+            with col_save:
+                save_note = st.form_submit_button("💾 Notu Kaydet", type="primary")
+            with col_delete:
+                if existing_note:
+                    delete_note = st.form_submit_button("🗑️ Notu Sil", type="secondary")
+                else:
+                    delete_note = False
+        
+        # Handle note operations
+        if save_note and note_text.strip():
+            try:
+                if existing_note:
+                    # Update existing note
+                    existing_note.note = note_text.strip()
+                    existing_note.updated_at = datetime.now()
+                    s.commit()
+                    st.success("Not güncellendi!")
+                else:
+                    # Create new note
+                    new_note = DailyNote(
+                        date_=selected_date,
+                        note=note_text.strip()
+                    )
+                    s.add(new_note)
+                    s.commit()
+                    st.success("Not kaydedildi!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Not kaydedilirken hata oluştu: {e}")
+        
+        elif save_note and not note_text.strip() and existing_note:
+            try:
+                # If note is empty and there's an existing note, delete it
+                s.delete(existing_note)
+                s.commit()
+                st.success("Not silindi!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Not silinirken hata oluştu: {e}")
+        
+        elif delete_note and existing_note:
+            st.session_state[f"confirm_delete_note_{selected_date}"] = True
+        
+        # Delete confirmation
+        if st.session_state.get(f"confirm_delete_note_{selected_date}"):
+            st.error("Bu günün notunu silmek istediğinizden emin misiniz?")
+            
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("✅ Evet, Sil", key=f"confirm_delete_note_yes_{selected_date}", type="primary"):
+                    try:
+                        if existing_note:
+                            s.delete(existing_note)
+                            s.commit()
+                            st.success("Not silindi!")
+                        del st.session_state[f"confirm_delete_note_{selected_date}"]
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Not silinirken hata oluştu: {e}")
+            
+            with col_no:
+                if st.button("❌ Hayır, İptal", key=f"confirm_delete_note_no_{selected_date}"):
+                    del st.session_state[f"confirm_delete_note_{selected_date}"]
+                    st.rerun()
+
         # Button to clear selection and show all sessions
         if st.button("🔄 Tüm Seansları Göster"):
             st.session_state.selected_calendar_date = None
@@ -1542,7 +1821,7 @@ def page_calendar():
                     enrollments = session_data['enrollments']
                     
                     with st.expander(f"🎨 {course.name} - {session.start_time.strftime('%H:%M')}-{session.end_time.strftime('%H:%M')} ({len(enrollments)} kişi)"):
-                        col1, col2 = st.columns(2)
+                        col1, col2, col3 = st.columns([3, 3, 2])
                         with col1:
                             st.write(f"**Kapasite:** {session.capacity}")
                             st.write(f"**Kayıtlı:** {len(enrollments)}")
@@ -1554,6 +1833,43 @@ def page_calendar():
                                 st.write(f"**Fiyat:** ₺{session.price_override}")
                             else:
                                 st.write(f"**Fiyat:** ₺{course.default_price}")
+                        
+                        with col3:
+                            if st.button("🗑️ Seansı İptal Et", key=f"cancel_all_session_{session.id}", type="secondary"):
+                                st.session_state[f"confirm_cancel_all_session_{session.id}"] = True
+                        
+                        # Session cancellation confirmation
+                        if st.session_state.get(f"confirm_cancel_all_session_{session.id}"):
+                            st.error(f"**Bu seansı tamamen iptal etmek istediğinizden emin misiniz?**")
+                            st.write(f"📅 {session.date.strftime('%d %B %Y')} - {session.start_time.strftime('%H:%M')}-{session.end_time.strftime('%H:%M')}")
+                            st.write(f"⚠️ Bu işlem geri alınamaz. Seansta kayıtlı {len(enrollments)} kişi çıkarılacak ve seans silinecek.")
+                            
+                            col_yes, col_no = st.columns(2)
+                            with col_yes:
+                                if st.button("✅ Evet, İptal Et", key=f"confirm_cancel_all_yes_{session.id}", type="primary"):
+                                    with get_session() as cancel_session:
+                                        # Delete all enrollments for this session
+                                        session_enrollments = cancel_session.exec(
+                                            select(Enrollment).where(Enrollment.session_id == session.id)
+                                        ).all()
+                                        
+                                        for enrollment in session_enrollments:
+                                            cancel_session.delete(enrollment)
+                                        
+                                        # Delete the session
+                                        session_to_delete = cancel_session.get(SessionModel, session.id)
+                                        if session_to_delete:
+                                            cancel_session.delete(session_to_delete)
+                                        
+                                        cancel_session.commit()
+                                        st.success(f"Seans başarıyla iptal edildi!")
+                                        del st.session_state[f"confirm_cancel_all_session_{session.id}"]
+                                        st.rerun()
+                            
+                            with col_no:
+                                if st.button("❌ Hayır, İptal Etme", key=f"confirm_cancel_all_no_{session.id}"):
+                                    del st.session_state[f"confirm_cancel_all_session_{session.id}"]
+                                    st.rerun()
                         
                         if enrollments:
                             st.write("**Katılımcılar:**")
@@ -1568,23 +1884,53 @@ def page_calendar():
                                     'no_show': '👻'
                                 }.get(enrollment.status, '📝')
                                 
-                                person_info = f"{i}. {status_emoji} **{person.name}**"
-                                if person.phone:
-                                    person_info += f" - {person.phone}"
+                                # Create columns for person info and remove button
+                                col_person, col_remove = st.columns([10, 1])
                                 
-                                # Show group label if any
-                                if enrollment.group_label:
-                                    person_info += f" - 🏷️ *{enrollment.group_label}*"
+                                with col_person:
+                                    person_info = f"{i}. {status_emoji} **{person.name}**"
+                                    if person.phone:
+                                        person_info += f" - {person.phone}"
+                                    
+                                    # Show group label if any
+                                    if enrollment.group_label:
+                                        person_info += f" - 🏷️ *{enrollment.group_label}*"
+                                    
+                                    # Show enrollment notes if any
+                                    if enrollment.note:
+                                        person_info += f"\n   💭 *{enrollment.note}*"
+                                    
+                                    # Show person notes if any  
+                                    if person.notes:
+                                        person_info += f"\n   📝 *Kişi Notu: {person.notes}*"
+                                    
+                                    st.markdown(person_info)
                                 
-                                # Show enrollment notes if any
-                                if enrollment.note:
-                                    person_info += f"\n   💭 *{enrollment.note}*"
+                                with col_remove:
+                                    if st.button("🗑️", key=f"remove_all_enrollment_{enrollment.id}", help="Kayıttan Çıkar"):
+                                        st.session_state[f"confirm_remove_all_enrollment_{enrollment.id}"] = True
                                 
-                                # Show person notes if any  
-                                if person.notes:
-                                    person_info += f"\n   📝 *Kişi Notu: {person.notes}*"
-                                
-                                st.markdown(person_info)
+                                # Confirmation dialog for removal
+                                if st.session_state.get(f"confirm_remove_all_enrollment_{enrollment.id}"):
+                                    st.error(f"**{person.name}** kişisini bu seanstan çıkarmak istediğinizden emin misiniz?")
+                                    
+                                    col_yes, col_no = st.columns(2)
+                                    with col_yes:
+                                        if st.button("✅ Evet, Çıkar", key=f"confirm_remove_all_yes_{enrollment.id}", type="primary"):
+                                            with get_session() as remove_session:
+                                                # Find and delete the enrollment
+                                                enrollment_to_remove = remove_session.get(Enrollment, enrollment.id)
+                                                if enrollment_to_remove:
+                                                    remove_session.delete(enrollment_to_remove)
+                                                    remove_session.commit()
+                                                    st.success(f"{person.name} seansdan çıkarıldı!")
+                                                    del st.session_state[f"confirm_remove_all_enrollment_{enrollment.id}"]
+                                                    st.rerun()
+                                    
+                                    with col_no:
+                                        if st.button("❌ Hayır, İptal", key=f"confirm_remove_all_no_{enrollment.id}"):
+                                            del st.session_state[f"confirm_remove_all_enrollment_{enrollment.id}"]
+                                            st.rerun()
                         else:
                             st.info("Bu seansa henüz kimse kayıt olmamış.")
                 
@@ -1637,8 +1983,11 @@ def page_import():
                     ig = str(row.get(ig_col, "") or "").strip() or None
                     notes = str(row.get(note_col, "") or "").strip() or None
                     exists = None
+                    # Check for duplicate by phone or name (case insensitive)
                     if phone:
                         exists = s.exec(select(Person).where(Person.phone == phone)).first()
+                    if not exists:
+                        exists = s.exec(select(Person).where(func.lower(Person.name) == func.lower(name))).first()
                     if exists:
                         continue
                     s.add(Person(name=name, phone=phone, instagram=ig, notes=notes, first_visit=date.today()))
@@ -1795,6 +2144,14 @@ def main():
     if not st.session_state.get("authenticated", False):
         login_page()
         return
+    
+    # Initialize database tables (including new tables)
+    try:
+        init_db()
+        seed_minimal()  # Ensure basic data exists
+    except Exception as e:
+        # If DB init fails, show error but continue
+        st.error(f"Veritabanı başlatma hatası: {e}")
         
     # Force dark theme configuration
     st.set_page_config(
@@ -1845,9 +2202,20 @@ def main():
             q_ok    = st.form_submit_button("Kaydet")
         if q_ok and q_name.strip():
             with get_session() as s:
-                s.add(Person(name=q_name.strip(), phone=(q_phone.strip() or None), instagram=(q_ig.strip() or None), first_visit=date.today()))
-                s.commit()
-            st.sidebar.success("Öğrenci eklendi")
+                # Duplicate check - case insensitive
+                existing = s.exec(
+                    select(Person).where(
+                        (func.lower(Person.name) == func.lower(q_name.strip())) | 
+                        (Person.phone == q_phone.strip() if q_phone.strip() else False)
+                    )
+                ).first()
+                
+                if existing:
+                    st.sidebar.warning(f"Bu kişi zaten kayıtlı: {existing.name}")
+                else:
+                    s.add(Person(name=q_name.strip(), phone=(q_phone.strip() or None), instagram=(q_ig.strip() or None), first_visit=date.today()))
+                    s.commit()
+                    st.sidebar.success("Öğrenci eklendi")
 
     page = st.sidebar.radio(
         "Menü",
