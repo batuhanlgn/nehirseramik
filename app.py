@@ -2220,6 +2220,39 @@ def main():
         from sqlmodel import SQLModel
         SQLModel.metadata.clear()
         SQLModel.metadata.create_all(ENGINE)
+        
+        # Extra: Force daily_note table creation with raw SQL if needed
+        try:
+            with get_session() as test_s:
+                test_s.exec(select(DailyNote).limit(1)).all()
+        except Exception:
+            # Table doesn't exist, create it manually
+            from sqlmodel import text
+            with get_session() as create_s:
+                if "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
+                    create_s.exec(text("""
+                        CREATE TABLE IF NOT EXISTS daily_note (
+                            id SERIAL PRIMARY KEY,
+                            date_ DATE NOT NULL UNIQUE,
+                            note TEXT NOT NULL,
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            updated_at TIMESTAMP DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_daily_note_date ON daily_note(date_);
+                    """))
+                else:
+                    create_s.exec(text("""
+                        CREATE TABLE IF NOT EXISTS daily_note (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            date_ DATE NOT NULL UNIQUE,
+                            note TEXT NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_daily_note_date ON daily_note(date_);
+                    """))
+                create_s.commit()
+        
         seed_minimal()  # Ensure basic data exists
     except Exception as e:
         # If DB init fails, just continue silently
