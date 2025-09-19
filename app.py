@@ -136,10 +136,52 @@ def load_theme():
             color: var(--text-primary) !important;
           }}
           
-          /* Sidebar dark styling */
-          .css-1d391kg, .css-1lcbmhc {{
+          /* Sidebar adaptive styling - multiple selectors for compatibility */
+          .css-1d391kg, .css-1lcbmhc, 
+          .css-18e3th9, .css-1629p8f,
+          [data-testid="stSidebar"],
+          .stSidebar,
+          section[data-testid="stSidebar"] {{
             background: var(--bg-secondary) !important;
             color: var(--text-primary) !important;
+            border-right: 1px solid var(--border-subtle) !important;
+          }}
+          
+          /* Sidebar content styling */
+          .css-1d391kg > div,
+          .css-1lcbmhc > div,
+          [data-testid="stSidebar"] > div,
+          .stSidebar > div {{
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+          }}
+          
+          /* Sidebar widgets styling */
+          [data-testid="stSidebar"] .stSelectbox,
+          [data-testid="stSidebar"] .stTextInput,
+          [data-testid="stSidebar"] .stButton,
+          [data-testid="stSidebar"] .stRadio,
+          [data-testid="stSidebar"] .stMarkdown {{
+            color: var(--text-primary) !important;
+          }}
+          
+          /* Sidebar title styling */
+          [data-testid="stSidebar"] h1,
+          [data-testid="stSidebar"] h2,
+          [data-testid="stSidebar"] h3 {{
+            color: var(--text-primary) !important;
+          }}
+          
+          /* Sidebar expander styling */
+          [data-testid="stSidebar"] .streamlit-expanderHeader {{
+            background: var(--bg-hover) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-subtle) !important;
+          }}
+          
+          /* Fix for sidebar not showing */
+          .css-1x8cf1d, .css-18ni7ap, .css-1kyxreq {{
+            background: var(--bg-secondary) !important;
           }}
           
           /* Form elements adaptive styling */
@@ -2327,21 +2369,67 @@ def main():
                     }
                 });
                 
-                // Update sidebar
-                const sidebars = document.querySelectorAll('.css-1d391kg, .css-1lcbmhc');
-                sidebars.forEach(sidebar => {
-                    if (prefersDark) {
-                        sidebar.style.backgroundColor = '#1e293b';
-                        sidebar.style.color = '#ffffff';
-                    } else {
-                        sidebar.style.backgroundColor = '#ffffff';
-                        sidebar.style.color = '#1a202c';
-                    }
+                // Update sidebar with multiple selectors for compatibility
+                const sidebarSelectors = [
+                    '.css-1d391kg', '.css-1lcbmhc', 
+                    '.css-18e3th9', '.css-1629p8f',
+                    '[data-testid="stSidebar"]',
+                    '.stSidebar',
+                    'section[data-testid="stSidebar"]',
+                    '.css-1x8cf1d', '.css-18ni7ap', '.css-1kyxreq'
+                ];
+                
+                sidebarSelectors.forEach(selector => {
+                    const sidebars = document.querySelectorAll(selector);
+                    sidebars.forEach(sidebar => {
+                        if (sidebar) {
+                            sidebar.style.display = 'block'; // Ensure visibility
+                            if (prefersDark) {
+                                sidebar.style.backgroundColor = '#1e293b';
+                                sidebar.style.color = '#ffffff';
+                                sidebar.style.borderRight = '1px solid rgba(255, 255, 255, 0.1)';
+                            } else {
+                                sidebar.style.backgroundColor = '#ffffff';
+                                sidebar.style.color = '#1a202c';
+                                sidebar.style.borderRight = '1px solid rgba(0, 0, 0, 0.06)';
+                            }
+                        }
+                    });
                 });
+            }
             }
             
             // Apply theme immediately
             applyAdaptiveTheme();
+            
+            // Debug function to find sidebar
+            function findSidebar() {
+                const possibleSelectors = [
+                    '.css-1d391kg', '.css-1lcbmhc', 
+                    '.css-18e3th9', '.css-1629p8f',
+                    '[data-testid="stSidebar"]',
+                    '.stSidebar',
+                    'section[data-testid="stSidebar"]',
+                    '.css-1x8cf1d', '.css-18ni7ap', '.css-1kyxreq'
+                ];
+                
+                console.log('Looking for sidebar elements...');
+                possibleSelectors.forEach(selector => {
+                    const elements = document.querySelectorAll(selector);
+                    if (elements.length > 0) {
+                        console.log(`Found ${elements.length} elements with selector: ${selector}`);
+                        elements.forEach((el, index) => {
+                            el.style.display = 'block';
+                            el.style.visibility = 'visible';
+                            console.log(`Element ${index}:`, el);
+                        });
+                    }
+                });
+            }
+            
+            // Run sidebar finder after a delay
+            setTimeout(findSidebar, 1000);
+            setTimeout(findSidebar, 3000);
             
             // Listen for theme changes
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAdaptiveTheme);
@@ -2367,13 +2455,17 @@ def main():
             // Add dynamic CSS that adapts to theme
             const style = document.createElement('style');
             style.textContent = `
-                /* Adaptive theme overrides */
+                /* Adaptive theme overrides with comprehensive sidebar support */
                 @media (prefers-color-scheme: light) {
                     body, .stApp, .main, .block-container {
                         background-color: #f8fafc !important;
                         color: #1a202c !important;
                     }
-                    .css-1d391kg, .css-1lcbmhc {
+                    .css-1d391kg, .css-1lcbmhc,
+                    .css-18e3th9, .css-1629p8f,
+                    [data-testid="stSidebar"],
+                    .stSidebar,
+                    section[data-testid="stSidebar"] {
                         background-color: #ffffff !important;
                         color: #1a202c !important;
                         border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
@@ -2385,7 +2477,11 @@ def main():
                         background-color: #0e1117 !important;
                         color: #ffffff !important;
                     }
-                    .css-1d391kg, .css-1lcbmhc {
+                    .css-1d391kg, .css-1lcbmhc,
+                    .css-18e3th9, .css-1629p8f,
+                    [data-testid="stSidebar"],
+                    .stSidebar,
+                    section[data-testid="stSidebar"] {
                         background-color: #1e293b !important;
                         color: #ffffff !important;
                         border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
