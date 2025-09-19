@@ -37,18 +37,23 @@ OPENING_CASH = float(os.getenv("OPENING_CASH", "0"))
 
 # ============================ THEME ============================
 def load_theme():
-    css = """
+    # Force cache refresh with timestamp
+    import time
+    cache_buster = int(time.time())
+    
+    css = f"""
     <style>
+      /* Cache buster: {cache_buster} */
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
       
       /* Dark/Light mode detection */
-      :root {
+      :root {{
         /* Auto-detect system theme */
         color-scheme: light dark;
-      }
+      }}
       
       /* Light theme variables */
-      :root {
+      :root {{
         --bg-primary-light: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         --bg-glass-light: rgba(255, 255, 255, 0.85);
         --bg-glass-hover-light: rgba(255, 255, 255, 0.95);
@@ -59,10 +64,10 @@ def load_theme():
         --text-primary-light: #1a1a1a;
         --text-secondary-light: #4a5568;
         --text-muted-light: #718096;
-      }
+      }}
       
       /* Dark theme variables */
-      :root {
+      :root {{
         --bg-primary-dark: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         --bg-glass-dark: rgba(255, 255, 255, 0.08);
         --bg-glass-hover-dark: rgba(255, 255, 255, 0.12);
@@ -73,11 +78,11 @@ def load_theme():
         --text-primary-dark: #ffffff;
         --text-secondary-dark: rgba(255, 255, 255, 0.8);
         --text-muted-dark: rgba(255, 255, 255, 0.6);
-      }
+      }}
       
       /* Apply theme based on system preference */
-      @media (prefers-color-scheme: light) {
-        :root {
+      @media (prefers-color-scheme: light) {{
+        :root {{
           --bg-primary: var(--bg-primary-light);
           --bg-glass: var(--bg-glass-light);
           --bg-glass-hover: var(--bg-glass-hover-light);
@@ -88,25 +93,25 @@ def load_theme():
           --text-primary: var(--text-primary-light);
           --text-secondary: var(--text-secondary-light);
           --text-muted: var(--text-muted-light);
-        }
+        }}
         
-        body, .stApp, [data-testid="stAppViewContainer"] {
+        body, .stApp, [data-testid="stAppViewContainer"] {{
           background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%) !important;
           color: #1a1a1a !important;
-        }
+        }}
         
-        section[data-testid="stSidebar"] {
+        section[data-testid="stSidebar"] {{
           background-color: #f7fafc !important;
-        }
+        }}
         
-        section[data-testid="stSidebar"] > div {
+        section[data-testid="stSidebar"] > div {{
           background-color: #ffffff !important;
           border-right: 1px solid #e2e8f0;
-        }
-      }
+        }}
+      }}
       
-      @media (prefers-color-scheme: dark) {
-        :root {
+      @media (prefers-color-scheme: dark) {{
+        :root {{
           --bg-primary: var(--bg-primary-dark);
           --bg-glass: var(--bg-glass-dark);
           --bg-glass-hover: var(--bg-glass-hover-dark);
@@ -117,24 +122,24 @@ def load_theme():
           --text-primary: var(--text-primary-dark);
           --text-secondary: var(--text-secondary-dark);
           --text-muted: var(--text-muted-dark);
-        }
+        }}
         
-        body, .stApp, [data-testid="stAppViewContainer"] {
+        body, .stApp, [data-testid="stAppViewContainer"] {{
           background: #0e1117 !important;
           color: #ffffff !important;
-        }
+        }}
         
-        section[data-testid="stSidebar"] {
+        section[data-testid="stSidebar"] {{
           background-color: #0e1117 !important;
-        }
+        }}
         
-        section[data-testid="stSidebar"] > div {
+        section[data-testid="stSidebar"] > div {{
           background-color: #262730 !important;
-        }
-      }
+        }}
+      }}
       
       /* Common variables */
-      :root {
+      :root {{
         --brand-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         --brand-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         --brand-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -149,7 +154,7 @@ def load_theme():
         --glass-blur: blur(8px);
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-      }
+      }}
       
       /* Force theme adaptation for Streamlit components */
       .stSelectbox > div > div,
@@ -161,51 +166,51 @@ def load_theme():
       .stMultiSelect > div > div,
       .stSlider > div > div > div,
       .stRadio > div,
-      .stCheckbox > div {
+      .stCheckbox > div {{
         background-color: var(--bg-glass) !important;
         color: var(--text-primary) !important;
         border: 1px solid var(--glass-border) !important;
         backdrop-filter: var(--glass-blur);
-      }
+      }}
       
       /* Global styles */
-      * {
+      * {{
         box-sizing: border-box;
         margin: 0;
         padding: 0;
-      }
+      }}
       
-      html, body, [class^="css"] {
+      html, body, [class^="css"] {{
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-feature-settings: 'cv01', 'cv03', 'cv04', 'cv11';
         scroll-behavior: smooth;
-      }
+      }}
       
-      .block-container {
+      .block-container {{
         padding-top: 1rem;
         padding-bottom: 3rem;
         max-width: 1400px;
         margin: 0 auto;
-      }
+      }}
       
       /* Glassmorphism base class */
-      .glass {
+      .glass {{
         background: var(--bg-glass);
         backdrop-filter: var(--glass-blur);
         -webkit-backdrop-filter: var(--glass-blur);
         border: 1px solid var(--glass-border);
         box-shadow: var(--glass-shadow);
         transition: var(--transition);
-      }
+      }}
       
-      .glass:hover {
+      .glass:hover {{
         background: var(--bg-glass-hover);
         transform: translateY(-2px);
         box-shadow: var(--glass-shadow);
-      }
+      }}
       
       /* Hero Section */
-      .hero-section {
+      .hero-section {{
         background: var(--bg-glass);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
@@ -216,17 +221,17 @@ def load_theme():
         text-align: center;
         position: relative;
         overflow: hidden;
-      }
+      }}
       
-      .hero-brand {
+      .hero-brand {{
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 1rem;
         margin-bottom: 2rem;
-      }
+      }}
       
-      .hero-icon {
+      .hero-icon {{
         width: 80px;
         height: 80px;
         background: var(--brand-primary);
@@ -237,58 +242,58 @@ def load_theme():
         font-size: 2.5rem;
         box-shadow: var(--glass-shadow);
         animation: float 6s ease-in-out infinite;
-      }
+      }}
       
-      @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-      }
+      @keyframes float {{
+        0%, 100% {{ transform: translateY(0px); }}
+        50% {{ transform: translateY(-10px); }}
+      }}
       
-      .hero-title {
+      .hero-title {{
         font-size: 3.5rem;
         font-weight: 900;
         color: var(--text-primary);
         line-height: 1.2;
         margin-bottom: 1rem;
-      }
+      }}
       
-      .hero-subtitle {
+      .hero-subtitle {{
         font-size: 1.25rem;
         color: var(--text-secondary);
         font-weight: 500;
         margin-bottom: 2rem;
-      }
+      }}
       
-      .hero-stats {
+      .hero-stats {{
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 2rem;
         margin-top: 2rem;
-      }
+      }}
       
-      .hero-stat-value {
+      .hero-stat-value {{
         font-size: 2.5rem;
         font-weight: 800;
         font-family: 'JetBrains Mono', monospace;
         color: var(--text-primary);
-      }
+      }}
       
-      .hero-stat-label {
+      .hero-stat-label {{
         font-size: 0.9rem;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.1em;
-      }
+      }}
       
       /* KPI Cards */
-      .kpi-grid {
+      .kpi-grid {{
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 2rem;
         margin-bottom: 3rem;
-      }
+      }}
       
-      .kpi-card {
+      .kpi-card {{
         background: var(--bg-glass);
         backdrop-filter: var(--glass-blur);
         -webkit-backdrop-filter: var(--glass-blur);
@@ -299,22 +304,22 @@ def load_theme():
         overflow: hidden;
         transition: var(--transition-bounce);
         cursor: pointer;
-      }
+      }}
       
-      .kpi-card:hover {
+      .kpi-card:hover {{
         transform: translateY(-8px) scale(1.02);
         background: var(--bg-card-hover);
         box-shadow: var(--glass-shadow);
-      }
+      }}
       
-      .kpi-header {
+      .kpi-header {{
         display: flex;
         align-items: center;
         gap: 1rem;
         margin-bottom: 1.5rem;
-      }
+      }}
       
-      .kpi-icon {
+      .kpi-icon {{
         width: 60px;
         height: 60px;
         border-radius: var(--radius);
@@ -323,41 +328,41 @@ def load_theme():
         justify-content: center;
         font-size: 1.5rem;
         color: white;
-      }
+      }}
       
-      .kpi-icon.cash { background: var(--brand-success); }
-      .kpi-icon.bank { background: var(--brand-info); }
-      .kpi-icon.people { background: var(--brand-primary); }
-      .kpi-icon.pieces { background: var(--brand-warning); }
-      .kpi-icon.debt { background: var(--brand-danger); }
+      .kpi-icon.cash {{ background: var(--brand-success); }}
+      .kpi-icon.bank {{ background: var(--brand-info); }}
+      .kpi-icon.people {{ background: var(--brand-primary); }}
+      .kpi-icon.pieces {{ background: var(--brand-warning); }}
+      .kpi-icon.debt {{ background: var(--brand-danger); }}
       
-      .kpi-label {
+      .kpi-label {{
         font-size: 0.9rem;
         font-weight: 600;
         color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-bottom: 0.5rem;
-      }
+      }}
       
-      .kpi-value {
+      .kpi-value {{
         font-size: 2.5rem;
         font-weight: 800;
         font-family: 'JetBrains Mono', monospace;
         color: var(--text-primary);
         line-height: 1;
         margin-bottom: 0.5rem;
-      }
+      }}
       
-      .kpi-hint {
+      .kpi-hint {{
         font-size: 0.8rem;
         color: var(--text-muted);
         display: flex;
         align-items: center;
         gap: 0.5rem;
-      }
+      }}
       
-      .kpi-trend {
+      .kpi-trend {{
         display: flex;
         align-items: center;
         gap: 0.25rem;
@@ -366,13 +371,13 @@ def load_theme():
         padding: 0.25rem 0.5rem;
         border-radius: 999px;
         background: var(--bg-glass);
-      }
+      }}
       
-      .kpi-trend.up { color: #4ade80; }
-      .kpi-trend.down { color: #f87171; }
+      .kpi-trend.up {{ color: #4ade80; }}
+      .kpi-trend.down {{ color: #f87171; }}
       
       /* Content Cards */
-      .content-card {
+      .content-card {{
         background: var(--bg-glass);
         backdrop-filter: var(--glass-blur);
         -webkit-backdrop-filter: var(--glass-blur);
@@ -381,15 +386,15 @@ def load_theme():
         margin-bottom: 2rem;
         overflow: hidden;
         transition: var(--transition);
-      }
+      }}
       
-      .card-header {
+      .card-header {{
         padding: 2rem;
         background: var(--bg-card);
         border-bottom: 1px solid var(--glass-border);
-      }
+      }}
       
-      .card-title {
+      .card-title {{
         font-size: 1.5rem;
         font-weight: 700;
         color: var(--text-primary);
@@ -397,65 +402,65 @@ def load_theme():
         display: flex;
         align-items: center;
         gap: 1rem;
-      }
+      }}
       
-      .card-subtitle {
+      .card-subtitle {{
         font-size: 1rem;
         color: var(--text-secondary);
         margin: 0.5rem 0 0 0;
-      }
+      }}
       
-      .card-content {
+      .card-content {{
         padding: 2rem;
-      }
+      }}
       
       /* Session Items */
-      .session-item {
+      .session-item {{
         background: var(--bg-card);
         border: 1px solid var(--glass-border);
         border-radius: var(--radius);
         padding: 1.5rem;
         transition: var(--transition);
         margin-bottom: 1rem;
-      }
+      }}
       
-      .session-item:hover {
+      .session-item:hover {{
         background: var(--bg-card-hover);
         transform: translateX(8px);
-      }
+      }}
       
       /* Utilities */
-      .pulse {
+      .pulse {{
         animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
+      }}
       
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
+      @keyframes pulse {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.5; }}
+      }}
       
       /* Hide default Streamlit elements */
-      #MainMenu { visibility: hidden; }
-      footer { visibility: hidden; }
-      .stDeployButton { display: none; }
+      #MainMenu {{ visibility: hidden; }}
+      footer {{ visibility: hidden; }}
+      .stDeployButton {{ display: none; }}
       
       /* Enhanced dataframes */
-      [data-testid="stDataFrame"] {
+      [data-testid="stDataFrame"] {{
         background: var(--bg-glass);
         backdrop-filter: var(--glass-blur);
         border: 1px solid var(--glass-border);
         border-radius: var(--radius);
         overflow: hidden;
         box-shadow: var(--glass-shadow);
-      }
+      }}
       
       /* Responsive design */
-      @media (max-width: 768px) {
-        .hero-title { font-size: 2.5rem; }
-        .kpi-grid { grid-template-columns: 1fr; }
-        .hero-stats { grid-template-columns: repeat(2, 1fr); }
-        .card-header, .card-content { padding: 1.5rem; }
-      }
+      @media (max-width: 768px) {{
+        .hero-title {{ font-size: 2.5rem; }}
+        .kpi-grid {{ grid-template-columns: 1fr; }}
+        .hero-stats {{ grid-template-columns: repeat(2, 1fr); }}
+        .card-header, .card-content {{ padding: 1.5rem; }}
+      }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
