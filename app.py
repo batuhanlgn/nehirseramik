@@ -91,6 +91,38 @@ def load_theme():
               color: #1a202c !important;
               border-right: 1px solid #e2e8f0 !important;
             }}
+            
+            /* Light sidebar text elements */
+            [data-testid="stSidebar"] *,
+            [data-testid="stSidebar"] .stMarkdown,
+            [data-testid="stSidebar"] .stMarkdown p,
+            [data-testid="stSidebar"] h1,
+            [data-testid="stSidebar"] h2,
+            [data-testid="stSidebar"] h3,
+            [data-testid="stSidebar"] div,
+            [data-testid="stSidebar"] span,
+            [data-testid="stSidebar"] label,
+            .css-1d391kg *,
+            .css-1lcbmhc * {{
+              color: #1a202c !important;
+            }}
+            
+            /* Light sidebar form elements */
+            [data-testid="stSidebar"] .stTextInput label,
+            [data-testid="stSidebar"] .stSelectbox label,
+            [data-testid="stSidebar"] .stButton label,
+            [data-testid="stSidebar"] .stRadio label {{
+              color: #1a202c !important;
+            }}
+            
+            /* Light sidebar input styling */
+            [data-testid="stSidebar"] input,
+            [data-testid="stSidebar"] select,
+            [data-testid="stSidebar"] textarea {{
+              background-color: #f8fafc !important;
+              color: #1a202c !important;
+              border: 1px solid #e2e8f0 !important;
+            }}
           }}
           
           /* Dark theme colors */
@@ -106,6 +138,38 @@ def load_theme():
               background-color: #1e293b !important;
               color: #ffffff !important;
               border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+            }}
+            
+            /* Dark sidebar text elements */
+            [data-testid="stSidebar"] *,
+            [data-testid="stSidebar"] .stMarkdown,
+            [data-testid="stSidebar"] .stMarkdown p,
+            [data-testid="stSidebar"] h1,
+            [data-testid="stSidebar"] h2,
+            [data-testid="stSidebar"] h3,
+            [data-testid="stSidebar"] div,
+            [data-testid="stSidebar"] span,
+            [data-testid="stSidebar"] label,
+            .css-1d391kg *,
+            .css-1lcbmhc * {{
+              color: #ffffff !important;
+            }}
+            
+            /* Dark sidebar form elements */
+            [data-testid="stSidebar"] .stTextInput label,
+            [data-testid="stSidebar"] .stSelectbox label,
+            [data-testid="stSidebar"] .stButton label,
+            [data-testid="stSidebar"] .stRadio label {{
+              color: #ffffff !important;
+            }}
+            
+            /* Dark sidebar input styling */
+            [data-testid="stSidebar"] input,
+            [data-testid="stSidebar"] select,
+            [data-testid="stSidebar"] textarea {{
+              background-color: rgba(255, 255, 255, 0.1) !important;
+              color: #ffffff !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
             }}
           }}
           
@@ -384,6 +448,57 @@ def load_theme():
           @keyframes pulse {{
             0%, 100% {{ opacity: 1; }}
             50% {{ opacity: 0.7; }}
+          }}
+          
+          /* Additional sidebar styling for better text visibility */
+          
+          /* Sidebar radio buttons */
+          [data-testid="stSidebar"] .stRadio > div {{
+            color: inherit !important;
+          }}
+          
+          [data-testid="stSidebar"] .stRadio label {{
+            color: inherit !important;
+          }}
+          
+          /* Sidebar selectbox */
+          [data-testid="stSidebar"] .stSelectbox > div > div {{
+            color: inherit !important;
+          }}
+          
+          /* Sidebar text input */
+          [data-testid="stSidebar"] .stTextInput > div > div > input {{
+            color: inherit !important;
+          }}
+          
+          /* Sidebar button text */
+          [data-testid="stSidebar"] .stButton > button {{
+            color: #ffffff !important;
+            background: #3b82f6 !important;
+          }}
+          
+          /* Sidebar expander */
+          [data-testid="stSidebar"] .streamlit-expanderHeader {{
+            color: inherit !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+          }}
+          
+          /* Force inherit color for all sidebar children */
+          [data-testid="stSidebar"] * {{
+            color: inherit !important;
+          }}
+          
+          /* Override any Streamlit defaults */
+          @media (prefers-color-scheme: light) {{
+            [data-testid="stSidebar"] * {{
+              color: #1a202c !important;
+            }}
+          }}
+          
+          @media (prefers-color-scheme: dark) {{
+            [data-testid="stSidebar"] * {{
+              color: #ffffff !important;
+            }}
           }}
           
           /* Responsive */
