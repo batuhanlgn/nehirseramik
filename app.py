@@ -55,54 +55,518 @@ def load_theme():
         import time
         cache_buster = int(time.time())
         
-        # Use minimal critical CSS for better performance
+        # Adaptive theme system that respects user's system preference
         st.session_state.cached_css = f"""
         <style>
           /* Cache buster: {cache_buster} */
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
           
-          /* Critical CSS - Minimal for performance */
+          /* Base system that adapts to user preference */
           :root {{
             color-scheme: light dark;
             --transition: all 0.2s ease;
+            
+            /* Accent colors (same for both themes) */
+            --accent-primary: #3b82f6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
           }}
           
-          /* Light theme */
+          /* Light theme (default/system preference) */
           @media (prefers-color-scheme: light) {{
             :root {{
-              --bg-primary: #f7fafc;
-              --bg-glass: rgba(255, 255, 255, 0.9);
-              --text-primary: #1a1a1a;
+              --bg-primary: #f8fafc;
+              --bg-secondary: #ffffff;
+              --bg-glass: rgba(255, 255, 255, 0.8);
+              --bg-card: rgba(255, 255, 255, 0.9);
+              --bg-hover: rgba(0, 0, 0, 0.04);
+              
+              --text-primary: #1a202c;
               --text-secondary: #4a5568;
-              --border-color: rgba(0, 0, 0, 0.1);
+              --text-muted: #718096;
+              
+              --border-color: rgba(0, 0, 0, 0.12);
+              --border-subtle: rgba(0, 0, 0, 0.06);
+              
+              /* Light mode shadows */
+              --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+              --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
             }}
-            body, .stApp {{ background: var(--bg-primary) !important; color: var(--text-primary) !important; }}
           }}
           
           /* Dark theme */
           @media (prefers-color-scheme: dark) {{
             :root {{
               --bg-primary: #0e1117;
+              --bg-secondary: #1e293b;
               --bg-glass: rgba(255, 255, 255, 0.1);
+              --bg-card: rgba(255, 255, 255, 0.05);
+              --bg-hover: rgba(255, 255, 255, 0.1);
+              
               --text-primary: #ffffff;
               --text-secondary: rgba(255, 255, 255, 0.8);
+              --text-muted: rgba(255, 255, 255, 0.6);
+              
               --border-color: rgba(255, 255, 255, 0.2);
+              --border-subtle: rgba(255, 255, 255, 0.1);
+              
+              /* Dark mode shadows */
+              --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+              --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+              --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
             }}
-            body, .stApp {{ background: var(--bg-primary) !important; color: var(--text-primary) !important; }}
+          }}
+          
+          /* Global dark styling */
+          body, .stApp {{
+            background: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+          }}
+          
+          /* Streamlit components dark styling */
+          .stApp > div {{
+            background: var(--bg-primary) !important;
+          }}
+          
+          .main .block-container {{
+            background: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+          }}
+          
+          /* Sidebar dark styling */
+          .css-1d391kg, .css-1lcbmhc {{
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+          }}
+          
+          /* Form elements adaptive styling */
+          .stTextInput > div > div > input,
+          .stTextArea > div > div > textarea,
+          .stSelectbox > div > div > select,
+          .stNumberInput > div > div > input {{
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 8px !important;
+            transition: var(--transition) !important;
+          }}
+          
+          .stTextInput > div > div > input:focus,
+          .stTextArea > div > div > textarea:focus,
+          .stSelectbox > div > div > select:focus,
+          .stNumberInput > div > div > input:focus {{
+            border-color: var(--accent-primary) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+          }}
+          
+          /* Light theme specific form adjustments */
+          @media (prefers-color-scheme: light) {{
+            .stTextInput > div > div > input,
+            .stTextArea > div > div > textarea,
+            .stSelectbox > div > div > select,
+            .stNumberInput > div > div > input {{
+              background: #ffffff !important;
+              border: 1px solid #e2e8f0 !important;
+              color: #1a202c !important;
+            }}
+          }}
+          
+          /* Button dark styling */
+          .stButton > button {{
+            background: var(--accent-primary) !important;
+            color: white !important;
+            border: none !important;
+            transition: var(--transition) !important;
+          }}
+          
+          .stButton > button:hover {{
+            background: #2563eb !important;
+            transform: translateY(-1px) !important;
+            box-shadow: var(--shadow-md) !important;
+          }}
+          
+          /* Metric cards dark styling */
+          .metric-card {{
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border-subtle) !important;
+            color: var(--text-primary) !important;
+          }}
+          
+          /* Dataframe dark styling */
+          .stDataFrame {{
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+          }}
+          
+          /* Expander dark styling */
+          .streamlit-expanderHeader {{
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-subtle) !important;
+          }}
+          
+          .streamlit-expanderContent {{
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-subtle) !important;
           }}
           
           /* Performance optimizations */
-          * {{ box-sizing: border-box; }}
-          .block-container {{ max-width: 1200px; }}
+          * {{ 
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }}
           
-          /* Hide Streamlit elements */
+          .block-container {{ 
+            max-width: 1200px;
+            padding-top: 1rem !important;
+          }}
+          
+          /* Hide Streamlit branding */
           #MainMenu {{ visibility: hidden; }}
           footer {{ visibility: hidden; }}
           .stDeployButton {{ display: none; }}
+          header {{ visibility: hidden; }}
           
-          /* Responsive */
+          /* Custom scrollbar */
+          ::-webkit-scrollbar {{
+            width: 8px;
+          }}
+          
+          ::-webkit-scrollbar-track {{
+            background: var(--bg-secondary);
+          }}
+          
+          ::-webkit-scrollbar-thumb {{
+            background: var(--border-color);
+            border-radius: 4px;
+          }}
+          
+          ::-webkit-scrollbar-thumb:hover {{
+            background: var(--text-muted);
+          }}
+          
+          /* Responsive design */
           @media (max-width: 768px) {{
-            .block-container {{ padding: 1rem; }}
+            .block-container {{ 
+              padding: 1rem !important;
+            }}
+            
+            .hero-section {{
+              padding: 2rem 1rem !important;
+            }}
+          }}
+          
+          /* Hero Section Dark Styling */
+          .hero-section {{
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 3rem 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-lg);
+          }}
+          
+          .hero-brand {{
+            text-align: center;
+            margin-bottom: 2rem;
+          }}
+          
+          .hero-icon {{
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+          }}
+          
+          .hero-title {{
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          }}
+          
+          .hero-subtitle {{
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            opacity: 0.9;
+          }}
+          
+          .hero-stats {{
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+          }}
+          
+          .hero-stat {{
+            text-align: center;
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            min-width: 120px;
+            transition: var(--transition);
+          }}
+          
+          .hero-stat:hover {{
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent-primary);
+          }}
+          
+          .hero-stat-value {{
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 0.5rem;
+          }}
+          
+          .hero-stat-label {{
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+          }}
+          
+          .pulse {{
+            animation: pulse 2s infinite;
+          }}
+          
+          @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.7; }}
+          }}
+          
+          /* KPI Cards Dark Styling */
+          .kpi-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+          }}
+          
+          .kpi-card {{
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+          }}
+          
+          .kpi-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-primary);
+            border-radius: 16px 16px 0 0;
+          }}
+          
+          .kpi-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent-primary);
+          }}
+          
+          .kpi-header {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+          }}
+          
+          .kpi-icon {{
+            font-size: 2rem;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-hover);
+            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            transition: var(--transition);
+          }}
+          
+          /* KPI icon colors that work in both themes */
+          .kpi-icon.cash {{ 
+            background: rgba(34, 197, 94, 0.15); 
+            color: #22c55e;
+            border-color: rgba(34, 197, 94, 0.2);
+          }}
+          .kpi-icon.bank {{ 
+            background: rgba(59, 130, 246, 0.15); 
+            color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.2);
+          }}
+          .kpi-icon.people {{ 
+            background: rgba(168, 85, 247, 0.15); 
+            color: #a855f7;
+            border-color: rgba(168, 85, 247, 0.2);
+          }}
+          .kpi-icon.pieces {{ 
+            background: rgba(245, 158, 11, 0.15); 
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.2);
+          }}
+          
+          /* Light theme adjustments for icons */
+          @media (prefers-color-scheme: light) {{
+            .kpi-icon.cash {{ 
+              background: rgba(34, 197, 94, 0.1); 
+              color: #16a34a;
+            }}
+            .kpi-icon.bank {{ 
+              background: rgba(59, 130, 246, 0.1); 
+              color: #2563eb;
+            }}
+            .kpi-icon.people {{ 
+              background: rgba(168, 85, 247, 0.1); 
+              color: #9333ea;
+            }}
+            .kpi-icon.pieces {{ 
+              background: rgba(245, 158, 11, 0.1); 
+              color: #d97706;
+            }}
+          }}
+          
+          .kpi-title {{
+            flex: 1;
+          }}
+          
+          .kpi-label {{
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+            opacity: 0.8;
+          }}
+          
+          .kpi-value {{
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+          }}
+          
+          .kpi-hint {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+          }}
+          
+          .kpi-trend {{
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.75rem;
+          }}
+          
+          .kpi-trend.up {{
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+          }}
+          
+          .kpi-trend.down {{
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+          }}
+          
+          /* Content Cards Dark Styling */
+          .content-card {{
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+          }}
+          
+          .card-header {{
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-hover);
+          }}
+          
+          .card-title {{
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+          }}
+          
+          .card-subtitle {{
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+          }}
+          
+          .card-content {{
+            padding: 1.5rem;
+          }}
+          
+          /* Session List Dark Styling */
+          .session-list {{
+            space-y: 1rem;
+          }}
+          
+          .session-item {{
+            padding: 1rem;
+            background: var(--bg-hover);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: var(--transition);
+          }}
+          
+          .session-item:hover {{
+            border-color: var(--accent-primary);
+            transform: translateX(4px);
+          }}
+          
+          /* Generic item styling */
+          .item {{
+            padding: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: var(--transition);
+          }}
+          
+          .item:hover {{
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+          }}
+          
+          .row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }}
+          
+          .badge {{
+            background: var(--accent-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+          }}
+          
+          .soft {{
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            opacity: 0.8;
           }}
         </style>
         """
@@ -1823,24 +2287,112 @@ def main():
     
     # Load theme and scripts only once per session
     if 'theme_loaded' not in st.session_state:
-        # Force dark mode with additional JavaScript
+        # Adaptive theme system that respects user preferences
         st.markdown("""
             <script>
-            // Force dark mode
-            document.documentElement.setAttribute('data-theme', 'dark');
-            document.body.classList.add('dark-mode');
-            
-            // Override any light mode settings
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-                        if (document.documentElement.getAttribute('data-theme') !== 'dark') {
-                            document.documentElement.setAttribute('data-theme', 'dark');
-                        }
+            // Theme system that respects user's system preference
+            function applyAdaptiveTheme() {
+                // Check if user prefers dark mode
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
+                // Apply appropriate theme
+                if (prefersDark) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    document.body.classList.add('dark-mode');
+                    document.body.classList.remove('light-mode');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    document.body.classList.add('light-mode');
+                    document.body.classList.remove('dark-mode');
+                }
+                
+                // Apply colors based on theme
+                if (prefersDark) {
+                    document.body.style.backgroundColor = '#0e1117';
+                    document.body.style.color = '#ffffff';
+                } else {
+                    document.body.style.backgroundColor = '#f8fafc';
+                    document.body.style.color = '#1a202c';
+                }
+                
+                // Update Streamlit containers
+                const containers = document.querySelectorAll('.stApp, .main, .block-container');
+                containers.forEach(container => {
+                    if (prefersDark) {
+                        container.style.backgroundColor = '#0e1117';
+                        container.style.color = '#ffffff';
+                    } else {
+                        container.style.backgroundColor = '#f8fafc';
+                        container.style.color = '#1a202c';
                     }
                 });
+                
+                // Update sidebar
+                const sidebars = document.querySelectorAll('.css-1d391kg, .css-1lcbmhc');
+                sidebars.forEach(sidebar => {
+                    if (prefersDark) {
+                        sidebar.style.backgroundColor = '#1e293b';
+                        sidebar.style.color = '#ffffff';
+                    } else {
+                        sidebar.style.backgroundColor = '#ffffff';
+                        sidebar.style.color = '#1a202c';
+                    }
+                });
+            }
+            
+            // Apply theme immediately
+            applyAdaptiveTheme();
+            
+            // Listen for theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAdaptiveTheme);
+            
+            // Monitor DOM changes and reapply theme
+            const observer = new MutationObserver(function(mutations) {
+                // Debounce theme application
+                clearTimeout(window.themeTimeout);
+                window.themeTimeout = setTimeout(applyAdaptiveTheme, 100);
             });
-            observer.observe(document.documentElement, { attributes: true });
+            
+            // Observe changes to the document
+            observer.observe(document.documentElement, { 
+                attributes: true, 
+                childList: true, 
+                subtree: true 
+            });
+            
+            // Apply on window events
+            window.addEventListener('load', applyAdaptiveTheme);
+            window.addEventListener('resize', applyAdaptiveTheme);
+            
+            // Add dynamic CSS that adapts to theme
+            const style = document.createElement('style');
+            style.textContent = `
+                /* Adaptive theme overrides */
+                @media (prefers-color-scheme: light) {
+                    body, .stApp, .main, .block-container {
+                        background-color: #f8fafc !important;
+                        color: #1a202c !important;
+                    }
+                    .css-1d391kg, .css-1lcbmhc {
+                        background-color: #ffffff !important;
+                        color: #1a202c !important;
+                        border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+                    }
+                }
+                
+                @media (prefers-color-scheme: dark) {
+                    body, .stApp, .main, .block-container {
+                        background-color: #0e1117 !important;
+                        color: #ffffff !important;
+                    }
+                    .css-1d391kg, .css-1lcbmhc {
+                        background-color: #1e293b !important;
+                        color: #ffffff !important;
+                        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
             </script>
         """, unsafe_allow_html=True)
         
