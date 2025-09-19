@@ -50,222 +50,25 @@ OPENING_CASH = float(os.getenv("OPENING_CASH", "0"))
 
 # ============================ THEME ============================
 def load_theme():
-    # Cache the CSS content in session state for better performance
+    # Simple, working CSS that adapts to system theme
     if 'cached_css' not in st.session_state:
         import time
         cache_buster = int(time.time())
         
-        # Adaptive theme system that respects user's system preference
         st.session_state.cached_css = f"""
         <style>
           /* Cache buster: {cache_buster} */
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
           
-          /* Base system that adapts to user preference */
+          /* Clean, simple theme system */
           :root {{
-            color-scheme: light dark;
             --transition: all 0.2s ease;
-            
-            /* Accent colors (same for both themes) */
-            --accent-primary: #3b82f6;
-            --accent-success: #10b981;
-            --accent-warning: #f59e0b;
-            --accent-danger: #ef4444;
+            color-scheme: light dark;
           }}
           
-          /* Light theme (default/system preference) */
-          @media (prefers-color-scheme: light) {{
-            :root {{
-              --bg-primary: #f8fafc;
-              --bg-secondary: #ffffff;
-              --bg-glass: rgba(255, 255, 255, 0.8);
-              --bg-card: rgba(255, 255, 255, 0.9);
-              --bg-hover: rgba(0, 0, 0, 0.04);
-              
-              --text-primary: #1a202c;
-              --text-secondary: #4a5568;
-              --text-muted: #718096;
-              
-              --border-color: rgba(0, 0, 0, 0.12);
-              --border-subtle: rgba(0, 0, 0, 0.06);
-              
-              /* Light mode shadows */
-              --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-              --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-              --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
-            }}
-          }}
-          
-          /* Dark theme */
-          @media (prefers-color-scheme: dark) {{
-            :root {{
-              --bg-primary: #0e1117;
-              --bg-secondary: #1e293b;
-              --bg-glass: rgba(255, 255, 255, 0.1);
-              --bg-card: rgba(255, 255, 255, 0.05);
-              --bg-hover: rgba(255, 255, 255, 0.1);
-              
-              --text-primary: #ffffff;
-              --text-secondary: rgba(255, 255, 255, 0.8);
-              --text-muted: rgba(255, 255, 255, 0.6);
-              
-              --border-color: rgba(255, 255, 255, 0.2);
-              --border-subtle: rgba(255, 255, 255, 0.1);
-              
-              /* Dark mode shadows */
-              --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-              --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-              --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-            }}
-          }}
-          
-          /* Global dark styling */
+          /* Global styling */
           body, .stApp {{
-            background: var(--bg-primary) !important;
-            color: var(--text-primary) !important;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-          }}
-          
-          /* Streamlit components dark styling */
-          .stApp > div {{
-            background: var(--bg-primary) !important;
-          }}
-          
-          .main .block-container {{
-            background: var(--bg-primary) !important;
-            color: var(--text-primary) !important;
-          }}
-          
-          /* Sidebar adaptive styling - multiple selectors for compatibility */
-          .css-1d391kg, .css-1lcbmhc, 
-          .css-18e3th9, .css-1629p8f,
-          [data-testid="stSidebar"],
-          .stSidebar,
-          section[data-testid="stSidebar"] {{
-            background: var(--bg-secondary) !important;
-            color: var(--text-primary) !important;
-            border-right: 1px solid var(--border-subtle) !important;
-          }}
-          
-          /* Sidebar content styling */
-          .css-1d391kg > div,
-          .css-1lcbmhc > div,
-          [data-testid="stSidebar"] > div,
-          .stSidebar > div {{
-            background: var(--bg-secondary) !important;
-            color: var(--text-primary) !important;
-          }}
-          
-          /* Sidebar widgets styling */
-          [data-testid="stSidebar"] .stSelectbox,
-          [data-testid="stSidebar"] .stTextInput,
-          [data-testid="stSidebar"] .stButton,
-          [data-testid="stSidebar"] .stRadio,
-          [data-testid="stSidebar"] .stMarkdown {{
-            color: var(--text-primary) !important;
-          }}
-          
-          /* Sidebar title styling */
-          [data-testid="stSidebar"] h1,
-          [data-testid="stSidebar"] h2,
-          [data-testid="stSidebar"] h3 {{
-            color: var(--text-primary) !important;
-          }}
-          
-          /* Sidebar expander styling */
-          [data-testid="stSidebar"] .streamlit-expanderHeader {{
-            background: var(--bg-hover) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-subtle) !important;
-          }}
-          
-          /* Fix for sidebar not showing */
-          .css-1x8cf1d, .css-18ni7ap, .css-1kyxreq {{
-            background: var(--bg-secondary) !important;
-          }}
-          
-          /* Form elements adaptive styling */
-          .stTextInput > div > div > input,
-          .stTextArea > div > div > textarea,
-          .stSelectbox > div > div > select,
-          .stNumberInput > div > div > input {{
-            background: var(--bg-card) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 8px !important;
-            transition: var(--transition) !important;
-          }}
-          
-          .stTextInput > div > div > input:focus,
-          .stTextArea > div > div > textarea:focus,
-          .stSelectbox > div > div > select:focus,
-          .stNumberInput > div > div > input:focus {{
-            border-color: var(--accent-primary) !important;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
-          }}
-          
-          /* Light theme specific form adjustments */
-          @media (prefers-color-scheme: light) {{
-            .stTextInput > div > div > input,
-            .stTextArea > div > div > textarea,
-            .stSelectbox > div > div > select,
-            .stNumberInput > div > div > input {{
-              background: #ffffff !important;
-              border: 1px solid #e2e8f0 !important;
-              color: #1a202c !important;
-            }}
-          }}
-          
-          /* Button dark styling */
-          .stButton > button {{
-            background: var(--accent-primary) !important;
-            color: white !important;
-            border: none !important;
-            transition: var(--transition) !important;
-          }}
-          
-          .stButton > button:hover {{
-            background: #2563eb !important;
-            transform: translateY(-1px) !important;
-            box-shadow: var(--shadow-md) !important;
-          }}
-          
-          /* Metric cards dark styling */
-          .metric-card {{
-            background: var(--bg-card) !important;
-            border: 1px solid var(--border-subtle) !important;
-            color: var(--text-primary) !important;
-          }}
-          
-          /* Dataframe dark styling */
-          .stDataFrame {{
-            background: var(--bg-card) !important;
-            color: var(--text-primary) !important;
-          }}
-          
-          /* Expander dark styling */
-          .streamlit-expanderHeader {{
-            background: var(--bg-card) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-subtle) !important;
-          }}
-          
-          .streamlit-expanderContent {{
-            background: var(--bg-card) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-subtle) !important;
-          }}
-          
-          /* Performance optimizations */
-          * {{ 
-            box-sizing: border-box;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-          }}
-          
-          .block-container {{ 
-            max-width: 1200px;
-            padding-top: 1rem !important;
           }}
           
           /* Hide Streamlit branding */
@@ -274,148 +77,69 @@ def load_theme():
           .stDeployButton {{ display: none; }}
           header {{ visibility: hidden; }}
           
-          /* Custom scrollbar */
-          ::-webkit-scrollbar {{
-            width: 8px;
-          }}
-          
-          ::-webkit-scrollbar-track {{
-            background: var(--bg-secondary);
-          }}
-          
-          ::-webkit-scrollbar-thumb {{
-            background: var(--border-color);
-            border-radius: 4px;
-          }}
-          
-          ::-webkit-scrollbar-thumb:hover {{
-            background: var(--text-muted);
-          }}
-          
-          /* Responsive design */
-          @media (max-width: 768px) {{
-            .block-container {{ 
-              padding: 1rem !important;
+          /* Light theme colors */
+          @media (prefers-color-scheme: light) {{
+            body, .stApp, .main, .block-container {{
+              background-color: #f8fafc !important;
+              color: #1a202c !important;
             }}
             
-            .hero-section {{
-              padding: 2rem 1rem !important;
+            /* Light sidebar */
+            [data-testid="stSidebar"], 
+            .css-1d391kg, .css-1lcbmhc {{
+              background-color: #ffffff !important;
+              color: #1a202c !important;
+              border-right: 1px solid #e2e8f0 !important;
             }}
           }}
           
-          /* Hero Section Dark Styling */
-          .hero-section {{
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-            padding: 3rem 2rem;
-            border-radius: 16px;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border-subtle);
-            box-shadow: var(--shadow-lg);
+          /* Dark theme colors */
+          @media (prefers-color-scheme: dark) {{
+            body, .stApp, .main, .block-container {{
+              background-color: #0e1117 !important;
+              color: #ffffff !important;
+            }}
+            
+            /* Dark sidebar */
+            [data-testid="stSidebar"], 
+            .css-1d391kg, .css-1lcbmhc {{
+              background-color: #1e293b !important;
+              color: #ffffff !important;
+              border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+            }}
           }}
           
-          .hero-brand {{
-            text-align: center;
-            margin-bottom: 2rem;
-          }}
-          
-          .hero-icon {{
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
-          }}
-          
-          .hero-title {{
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-          }}
-          
-          .hero-subtitle {{
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            opacity: 0.9;
-          }}
-          
-          .hero-stats {{
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-          }}
-          
-          .hero-stat {{
-            text-align: center;
-            background: var(--bg-card);
-            padding: 1.5rem;
-            border-radius: 12px;
-            border: 1px solid var(--border-subtle);
-            min-width: 120px;
-            transition: var(--transition);
-          }}
-          
-          .hero-stat:hover {{
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-            border-color: var(--accent-primary);
-          }}
-          
-          .hero-stat-value {{
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-primary);
-            margin-bottom: 0.5rem;
-          }}
-          
-          .hero-stat-label {{
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            opacity: 0.8;
-          }}
-          
-          .pulse {{
-            animation: pulse 2s infinite;
-          }}
-          
-          @keyframes pulse {{
-            0%, 100% {{ opacity: 1; }}
-            50% {{ opacity: 0.7; }}
-          }}
-          
-          /* KPI Cards Dark Styling */
+          /* KPI Cards - Simple and clean */
           .kpi-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
             margin-bottom: 2rem;
           }}
           
           .kpi-card {{
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
             padding: 1.5rem;
+            border-radius: 12px;
             transition: var(--transition);
-            position: relative;
-            overflow: hidden;
+            border: 1px solid;
           }}
           
-          .kpi-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--accent-primary);
-            border-radius: 16px 16px 0 0;
+          @media (prefers-color-scheme: light) {{
+            .kpi-card {{
+              background: #ffffff;
+              border-color: #e2e8f0;
+              color: #1a202c;
+            }}
+            .kpi-card:hover {{ border-color: #3b82f6; }}
           }}
           
-          .kpi-card:hover {{
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--accent-primary);
+          @media (prefers-color-scheme: dark) {{
+            .kpi-card {{
+              background: rgba(255, 255, 255, 0.05);
+              border-color: rgba(255, 255, 255, 0.1);
+              color: #ffffff;
+            }}
+            .kpi-card:hover {{ border-color: #3b82f6; }}
           }}
           
           .kpi-header {{
@@ -432,70 +156,24 @@ def load_theme():
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg-hover);
             border-radius: 12px;
-            border: 1px solid var(--border-subtle);
-            transition: var(--transition);
           }}
           
-          /* KPI icon colors that work in both themes */
-          .kpi-icon.cash {{ 
-            background: rgba(34, 197, 94, 0.15); 
-            color: #22c55e;
-            border-color: rgba(34, 197, 94, 0.2);
-          }}
-          .kpi-icon.bank {{ 
-            background: rgba(59, 130, 246, 0.15); 
-            color: #3b82f6;
-            border-color: rgba(59, 130, 246, 0.2);
-          }}
-          .kpi-icon.people {{ 
-            background: rgba(168, 85, 247, 0.15); 
-            color: #a855f7;
-            border-color: rgba(168, 85, 247, 0.2);
-          }}
-          .kpi-icon.pieces {{ 
-            background: rgba(245, 158, 11, 0.15); 
-            color: #f59e0b;
-            border-color: rgba(245, 158, 11, 0.2);
-          }}
-          
-          /* Light theme adjustments for icons */
-          @media (prefers-color-scheme: light) {{
-            .kpi-icon.cash {{ 
-              background: rgba(34, 197, 94, 0.1); 
-              color: #16a34a;
-            }}
-            .kpi-icon.bank {{ 
-              background: rgba(59, 130, 246, 0.1); 
-              color: #2563eb;
-            }}
-            .kpi-icon.people {{ 
-              background: rgba(168, 85, 247, 0.1); 
-              color: #9333ea;
-            }}
-            .kpi-icon.pieces {{ 
-              background: rgba(245, 158, 11, 0.1); 
-              color: #d97706;
-            }}
-          }}
-          
-          .kpi-title {{
-            flex: 1;
-          }}
-          
-          .kpi-label {{
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-            opacity: 0.8;
-          }}
+          .kpi-icon.cash {{ background: rgba(34, 197, 94, 0.1); color: #22c55e; }}
+          .kpi-icon.bank {{ background: rgba(59, 130, 246, 0.1); color: #3b82f6; }}
+          .kpi-icon.people {{ background: rgba(168, 85, 247, 0.1); color: #a855f7; }}
+          .kpi-icon.pieces {{ background: rgba(245, 158, 11, 0.1); color: #f59e0b; }}
           
           .kpi-value {{
             font-size: 1.8rem;
             font-weight: 700;
-            color: var(--text-primary);
             line-height: 1;
+          }}
+          
+          .kpi-label {{
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 0.25rem;
           }}
           
           .kpi-hint {{
@@ -503,7 +181,7 @@ def load_theme():
             justify-content: space-between;
             align-items: center;
             font-size: 0.8rem;
-            color: var(--text-muted);
+            opacity: 0.7;
             margin-top: 0.5rem;
           }}
           
@@ -524,31 +202,48 @@ def load_theme():
             color: #ef4444;
           }}
           
-          /* Content Cards Dark Styling */
+          /* Content Cards */
           .content-card {{
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
             margin-bottom: 1.5rem;
+            border: 1px solid;
+          }}
+          
+          @media (prefers-color-scheme: light) {{
+            .content-card {{
+              background: #ffffff;
+              border-color: #e2e8f0;
+            }}
+            .card-header {{
+              background: #f8fafc;
+              border-bottom: 1px solid #e2e8f0;
+            }}
+          }}
+          
+          @media (prefers-color-scheme: dark) {{
+            .content-card {{
+              background: rgba(255, 255, 255, 0.05);
+              border-color: rgba(255, 255, 255, 0.1);
+            }}
+            .card-header {{
+              background: rgba(255, 255, 255, 0.05);
+              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }}
           }}
           
           .card-header {{
             padding: 1.5rem;
-            border-bottom: 1px solid var(--border-subtle);
-            background: var(--bg-hover);
           }}
           
           .card-title {{
             font-size: 1.2rem;
             font-weight: 600;
-            color: var(--text-primary);
             margin-bottom: 0.25rem;
           }}
           
           .card-subtitle {{
             font-size: 0.9rem;
-            color: var(--text-secondary);
             opacity: 0.8;
           }}
           
@@ -556,38 +251,29 @@ def load_theme():
             padding: 1.5rem;
           }}
           
-          /* Session List Dark Styling */
-          .session-list {{
-            space-y: 1rem;
-          }}
-          
-          .session-item {{
-            padding: 1rem;
-            background: var(--bg-hover);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            transition: var(--transition);
-          }}
-          
-          .session-item:hover {{
-            border-color: var(--accent-primary);
-            transform: translateX(4px);
-          }}
-          
           /* Generic item styling */
           .item {{
             padding: 1rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
             border-radius: 8px;
             margin-bottom: 0.5rem;
             transition: var(--transition);
+            border: 1px solid;
           }}
           
-          .item:hover {{
-            border-color: var(--accent-primary);
-            background: var(--bg-hover);
+          @media (prefers-color-scheme: light) {{
+            .item {{
+              background: #ffffff;
+              border-color: #e2e8f0;
+            }}
+            .item:hover {{ border-color: #3b82f6; }}
+          }}
+          
+          @media (prefers-color-scheme: dark) {{
+            .item {{
+              background: rgba(255, 255, 255, 0.05);
+              border-color: rgba(255, 255, 255, 0.1);
+            }}
+            .item:hover {{ border-color: #3b82f6; }}
           }}
           
           .row {{
@@ -597,7 +283,7 @@ def load_theme():
           }}
           
           .badge {{
-            background: var(--accent-primary);
+            background: #3b82f6;
             color: white;
             padding: 0.25rem 0.75rem;
             border-radius: 12px;
@@ -606,9 +292,106 @@ def load_theme():
           }}
           
           .soft {{
-            color: var(--text-muted);
+            opacity: 0.7;
+            font-size: 0.9rem;
+          }}
+          
+          /* Hero Section */
+          .hero-section {{
+            padding: 3rem 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            text-align: center;
+            border: 1px solid;
+          }}
+          
+          @media (prefers-color-scheme: light) {{
+            .hero-section {{
+              background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+              border-color: #e2e8f0;
+            }}
+          }}
+          
+          @media (prefers-color-scheme: dark) {{
+            .hero-section {{
+              background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, #0e1117 100%);
+              border-color: rgba(255, 255, 255, 0.1);
+            }}
+          }}
+          
+          .hero-icon {{
+            font-size: 4rem;
+            margin-bottom: 1rem;
+          }}
+          
+          .hero-title {{
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+          }}
+          
+          .hero-subtitle {{
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-bottom: 2rem;
+          }}
+          
+          .hero-stats {{
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+          }}
+          
+          .hero-stat {{
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 12px;
+            min-width: 120px;
+            border: 1px solid;
+          }}
+          
+          @media (prefers-color-scheme: light) {{
+            .hero-stat {{
+              background: #ffffff;
+              border-color: #e2e8f0;
+            }}
+          }}
+          
+          @media (prefers-color-scheme: dark) {{
+            .hero-stat {{
+              background: rgba(255, 255, 255, 0.05);
+              border-color: rgba(255, 255, 255, 0.1);
+            }}
+          }}
+          
+          .hero-stat-value {{
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+          }}
+          
+          .hero-stat-label {{
             font-size: 0.9rem;
             opacity: 0.8;
+          }}
+          
+          .pulse {{
+            animation: pulse 2s infinite;
+          }}
+          
+          @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.7; }}
+          }}
+          
+          /* Responsive */
+          @media (max-width: 768px) {{
+            .block-container {{ padding: 1rem !important; }}
+            .hero-section {{ padding: 2rem 1rem !important; }}
+            .kpi-grid {{ grid-template-columns: 1fr; }}
+            .hero-stats {{ flex-direction: column; gap: 1rem; }}
           }}
         </style>
         """
@@ -2329,169 +2112,6 @@ def main():
     
     # Load theme and scripts only once per session
     if 'theme_loaded' not in st.session_state:
-        # Adaptive theme system that respects user preferences
-        st.markdown("""
-            <script>
-            // Theme system that respects user's system preference
-            function applyAdaptiveTheme() {
-                // Check if user prefers dark mode
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                
-                // Apply appropriate theme
-                if (prefersDark) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                    document.body.classList.add('dark-mode');
-                    document.body.classList.remove('light-mode');
-                } else {
-                    document.documentElement.setAttribute('data-theme', 'light');
-                    document.body.classList.add('light-mode');
-                    document.body.classList.remove('dark-mode');
-                }
-                
-                // Apply colors based on theme
-                if (prefersDark) {
-                    document.body.style.backgroundColor = '#0e1117';
-                    document.body.style.color = '#ffffff';
-                } else {
-                    document.body.style.backgroundColor = '#f8fafc';
-                    document.body.style.color = '#1a202c';
-                }
-                
-                // Update Streamlit containers
-                const containers = document.querySelectorAll('.stApp, .main, .block-container');
-                containers.forEach(container => {
-                    if (prefersDark) {
-                        container.style.backgroundColor = '#0e1117';
-                        container.style.color = '#ffffff';
-                    } else {
-                        container.style.backgroundColor = '#f8fafc';
-                        container.style.color = '#1a202c';
-                    }
-                });
-                
-                // Update sidebar with multiple selectors for compatibility
-                const sidebarSelectors = [
-                    '.css-1d391kg', '.css-1lcbmhc', 
-                    '.css-18e3th9', '.css-1629p8f',
-                    '[data-testid="stSidebar"]',
-                    '.stSidebar',
-                    'section[data-testid="stSidebar"]',
-                    '.css-1x8cf1d', '.css-18ni7ap', '.css-1kyxreq'
-                ];
-                
-                sidebarSelectors.forEach(selector => {
-                    const sidebars = document.querySelectorAll(selector);
-                    sidebars.forEach(sidebar => {
-                        if (sidebar) {
-                            sidebar.style.display = 'block'; // Ensure visibility
-                            if (prefersDark) {
-                                sidebar.style.backgroundColor = '#1e293b';
-                                sidebar.style.color = '#ffffff';
-                                sidebar.style.borderRight = '1px solid rgba(255, 255, 255, 0.1)';
-                            } else {
-                                sidebar.style.backgroundColor = '#ffffff';
-                                sidebar.style.color = '#1a202c';
-                                sidebar.style.borderRight = '1px solid rgba(0, 0, 0, 0.06)';
-                            }
-                        }
-                    });
-                });
-            }
-            }
-            
-            // Apply theme immediately
-            applyAdaptiveTheme();
-            
-            // Debug function to find sidebar
-            function findSidebar() {
-                const possibleSelectors = [
-                    '.css-1d391kg', '.css-1lcbmhc', 
-                    '.css-18e3th9', '.css-1629p8f',
-                    '[data-testid="stSidebar"]',
-                    '.stSidebar',
-                    'section[data-testid="stSidebar"]',
-                    '.css-1x8cf1d', '.css-18ni7ap', '.css-1kyxreq'
-                ];
-                
-                console.log('Looking for sidebar elements...');
-                possibleSelectors.forEach(selector => {
-                    const elements = document.querySelectorAll(selector);
-                    if (elements.length > 0) {
-                        console.log(`Found ${elements.length} elements with selector: ${selector}`);
-                        elements.forEach((el, index) => {
-                            el.style.display = 'block';
-                            el.style.visibility = 'visible';
-                            console.log(`Element ${index}:`, el);
-                        });
-                    }
-                });
-            }
-            
-            // Run sidebar finder after a delay
-            setTimeout(findSidebar, 1000);
-            setTimeout(findSidebar, 3000);
-            
-            // Listen for theme changes
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAdaptiveTheme);
-            
-            // Monitor DOM changes and reapply theme
-            const observer = new MutationObserver(function(mutations) {
-                // Debounce theme application
-                clearTimeout(window.themeTimeout);
-                window.themeTimeout = setTimeout(applyAdaptiveTheme, 100);
-            });
-            
-            // Observe changes to the document
-            observer.observe(document.documentElement, { 
-                attributes: true, 
-                childList: true, 
-                subtree: true 
-            });
-            
-            // Apply on window events
-            window.addEventListener('load', applyAdaptiveTheme);
-            window.addEventListener('resize', applyAdaptiveTheme);
-            
-            // Add dynamic CSS that adapts to theme
-            const style = document.createElement('style');
-            style.textContent = `
-                /* Adaptive theme overrides with comprehensive sidebar support */
-                @media (prefers-color-scheme: light) {
-                    body, .stApp, .main, .block-container {
-                        background-color: #f8fafc !important;
-                        color: #1a202c !important;
-                    }
-                    .css-1d391kg, .css-1lcbmhc,
-                    .css-18e3th9, .css-1629p8f,
-                    [data-testid="stSidebar"],
-                    .stSidebar,
-                    section[data-testid="stSidebar"] {
-                        background-color: #ffffff !important;
-                        color: #1a202c !important;
-                        border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
-                    }
-                }
-                
-                @media (prefers-color-scheme: dark) {
-                    body, .stApp, .main, .block-container {
-                        background-color: #0e1117 !important;
-                        color: #ffffff !important;
-                    }
-                    .css-1d391kg, .css-1lcbmhc,
-                    .css-18e3th9, .css-1629p8f,
-                    [data-testid="stSidebar"],
-                    .stSidebar,
-                    section[data-testid="stSidebar"] {
-                        background-color: #1e293b !important;
-                        color: #ffffff !important;
-                        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-            </script>
-        """, unsafe_allow_html=True)
-        
         load_theme()
         st.session_state.theme_loaded = True
     # Initialize database only once
