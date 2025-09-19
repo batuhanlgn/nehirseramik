@@ -9,7 +9,6 @@ import os
 import calendar
 from datetime import date, time as dtime, datetime, timedelta
 from typing import Optional
-from functools import lru_cache
 
 import pandas as pd
 import streamlit as st
@@ -27,19 +26,7 @@ except ImportError:
 APP_TITLE = "Nehir Atölye Yönetim"
 DEFAULT_DB = "sqlite:///nehir.db"  # env yoksa SQLite
 DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB)
-
-# Optimized engine with connection pooling
-if DATABASE_URL.startswith("postgresql"):
-    ENGINE = create_engine(
-        DATABASE_URL, 
-        echo=False,
-        pool_size=5,           # Connection pool size
-        max_overflow=10,       # Additional connections
-        pool_pre_ping=True,    # Validate connections
-        pool_recycle=3600      # Recycle connections every hour
-    )
-else:
-    ENGINE = create_engine(DATABASE_URL, echo=False)
+ENGINE = create_engine(DATABASE_URL, echo=False)
 
 DEFAULT_PRICE_COURSE = 500.0
 DEFAULT_PRICE_BOYAMA = 250.0
@@ -50,469 +37,478 @@ OPENING_CASH = float(os.getenv("OPENING_CASH", "0"))
 
 # ============================ THEME ============================
 def load_theme():
-    # Simple, working CSS that adapts to system theme
-    if 'cached_css' not in st.session_state:
-        import time
-        cache_buster = int(time.time())
-        
-        st.session_state.cached_css = f"""
-        <style>
-          /* Cache buster: {cache_buster} */
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-          
-          /* Clean, simple theme system */
-          :root {{
-            --transition: all 0.2s ease;
-            color-scheme: light dark;
-          }}
-          
-          /* Global styling */
-          body, .stApp {{
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-          }}
-          
-          /* Hide Streamlit branding */
-          #MainMenu {{ visibility: hidden; }}
-          footer {{ visibility: hidden; }}
-          .stDeployButton {{ display: none; }}
-          header {{ visibility: hidden; }}
-          
-          /* Light theme colors */
-          @media (prefers-color-scheme: light) {{
-            body, .stApp, .main, .block-container {{
-              background-color: #f8fafc !important;
-              color: #1a202c !important;
-            }}
-            
-            /* Light sidebar */
-            [data-testid="stSidebar"], 
-            .css-1d391kg, .css-1lcbmhc {{
-              background-color: #ffffff !important;
-              color: #1a202c !important;
-              border-right: 1px solid #e2e8f0 !important;
-            }}
-            
-            /* Light sidebar text elements */
-            [data-testid="stSidebar"] *,
-            [data-testid="stSidebar"] .stMarkdown,
-            [data-testid="stSidebar"] .stMarkdown p,
-            [data-testid="stSidebar"] h1,
-            [data-testid="stSidebar"] h2,
-            [data-testid="stSidebar"] h3,
-            [data-testid="stSidebar"] div,
-            [data-testid="stSidebar"] span,
-            [data-testid="stSidebar"] label,
-            .css-1d391kg *,
-            .css-1lcbmhc * {{
-              color: #1a202c !important;
-            }}
-            
-            /* Light sidebar form elements */
-            [data-testid="stSidebar"] .stTextInput label,
-            [data-testid="stSidebar"] .stSelectbox label,
-            [data-testid="stSidebar"] .stButton label,
-            [data-testid="stSidebar"] .stRadio label {{
-              color: #1a202c !important;
-            }}
-            
-            /* Light sidebar input styling */
-            [data-testid="stSidebar"] input,
-            [data-testid="stSidebar"] select,
-            [data-testid="stSidebar"] textarea {{
-              background-color: #f8fafc !important;
-              color: #1a202c !important;
-              border: 1px solid #e2e8f0 !important;
-            }}
-          }}
-          
-          /* Dark theme colors */
-          @media (prefers-color-scheme: dark) {{
-            body, .stApp, .main, .block-container {{
-              background-color: #0e1117 !important;
-              color: #ffffff !important;
-            }}
-            
-            /* Dark sidebar */
-            [data-testid="stSidebar"], 
-            .css-1d391kg, .css-1lcbmhc {{
-              background-color: #1e293b !important;
-              color: #ffffff !important;
-              border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
-            }}
-            
-            /* Dark sidebar text elements */
-            [data-testid="stSidebar"] *,
-            [data-testid="stSidebar"] .stMarkdown,
-            [data-testid="stSidebar"] .stMarkdown p,
-            [data-testid="stSidebar"] h1,
-            [data-testid="stSidebar"] h2,
-            [data-testid="stSidebar"] h3,
-            [data-testid="stSidebar"] div,
-            [data-testid="stSidebar"] span,
-            [data-testid="stSidebar"] label,
-            .css-1d391kg *,
-            .css-1lcbmhc * {{
-              color: #ffffff !important;
-            }}
-            
-            /* Dark sidebar form elements */
-            [data-testid="stSidebar"] .stTextInput label,
-            [data-testid="stSidebar"] .stSelectbox label,
-            [data-testid="stSidebar"] .stButton label,
-            [data-testid="stSidebar"] .stRadio label {{
-              color: #ffffff !important;
-            }}
-            
-            /* Dark sidebar input styling */
-            [data-testid="stSidebar"] input,
-            [data-testid="stSidebar"] select,
-            [data-testid="stSidebar"] textarea {{
-              background-color: rgba(255, 255, 255, 0.1) !important;
-              color: #ffffff !important;
-              border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            }}
-          }}
-          
-          /* KPI Cards - Simple and clean */
-          .kpi-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-          }}
-          
-          .kpi-card {{
-            padding: 1.5rem;
-            border-radius: 12px;
-            transition: var(--transition);
-            border: 1px solid;
-          }}
-          
-          @media (prefers-color-scheme: light) {{
-            .kpi-card {{
-              background: #ffffff;
-              border-color: #e2e8f0;
-              color: #1a202c;
-            }}
-            .kpi-card:hover {{ border-color: #3b82f6; }}
-          }}
-          
-          @media (prefers-color-scheme: dark) {{
-            .kpi-card {{
-              background: rgba(255, 255, 255, 0.05);
-              border-color: rgba(255, 255, 255, 0.1);
-              color: #ffffff;
-            }}
-            .kpi-card:hover {{ border-color: #3b82f6; }}
-          }}
-          
-          .kpi-header {{
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-          }}
-          
-          .kpi-icon {{
-            font-size: 2rem;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-          }}
-          
-          .kpi-icon.cash {{ background: rgba(34, 197, 94, 0.1); color: #22c55e; }}
-          .kpi-icon.bank {{ background: rgba(59, 130, 246, 0.1); color: #3b82f6; }}
-          .kpi-icon.people {{ background: rgba(168, 85, 247, 0.1); color: #a855f7; }}
-          .kpi-icon.pieces {{ background: rgba(245, 158, 11, 0.1); color: #f59e0b; }}
-          
-          .kpi-value {{
-            font-size: 1.8rem;
-            font-weight: 700;
-            line-height: 1;
-          }}
-          
-          .kpi-label {{
-            font-size: 0.9rem;
-            opacity: 0.8;
-            margin-bottom: 0.25rem;
-          }}
-          
-          .kpi-hint {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.8rem;
-            opacity: 0.7;
-            margin-top: 0.5rem;
-          }}
-          
-          .kpi-trend {{
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.75rem;
-          }}
-          
-          .kpi-trend.up {{
-            background: rgba(34, 197, 94, 0.1);
-            color: #22c55e;
-          }}
-          
-          .kpi-trend.down {{
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-          }}
-          
-          /* Content Cards */
-          .content-card {{
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-            border: 1px solid;
-          }}
-          
-          @media (prefers-color-scheme: light) {{
-            .content-card {{
-              background: #ffffff;
-              border-color: #e2e8f0;
-            }}
-            .card-header {{
-              background: #f8fafc;
-              border-bottom: 1px solid #e2e8f0;
-            }}
-          }}
-          
-          @media (prefers-color-scheme: dark) {{
-            .content-card {{
-              background: rgba(255, 255, 255, 0.05);
-              border-color: rgba(255, 255, 255, 0.1);
-            }}
-            .card-header {{
-              background: rgba(255, 255, 255, 0.05);
-              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }}
-          }}
-          
-          .card-header {{
-            padding: 1.5rem;
-          }}
-          
-          .card-title {{
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-          }}
-          
-          .card-subtitle {{
-            font-size: 0.9rem;
-            opacity: 0.8;
-          }}
-          
-          .card-content {{
-            padding: 1.5rem;
-          }}
-          
-          /* Generic item styling */
-          .item {{
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            transition: var(--transition);
-            border: 1px solid;
-          }}
-          
-          @media (prefers-color-scheme: light) {{
-            .item {{
-              background: #ffffff;
-              border-color: #e2e8f0;
-            }}
-            .item:hover {{ border-color: #3b82f6; }}
-          }}
-          
-          @media (prefers-color-scheme: dark) {{
-            .item {{
-              background: rgba(255, 255, 255, 0.05);
-              border-color: rgba(255, 255, 255, 0.1);
-            }}
-            .item:hover {{ border-color: #3b82f6; }}
-          }}
-          
-          .row {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }}
-          
-          .badge {{
-            background: #3b82f6;
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-          }}
-          
-          .soft {{
-            opacity: 0.7;
-            font-size: 0.9rem;
-          }}
-          
-          /* Hero Section */
-          .hero-section {{
-            padding: 3rem 2rem;
-            border-radius: 16px;
-            margin-bottom: 2rem;
-            text-align: center;
-            border: 1px solid;
-          }}
-          
-          @media (prefers-color-scheme: light) {{
-            .hero-section {{
-              background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-              border-color: #e2e8f0;
-            }}
-          }}
-          
-          @media (prefers-color-scheme: dark) {{
-            .hero-section {{
-              background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, #0e1117 100%);
-              border-color: rgba(255, 255, 255, 0.1);
-            }}
-          }}
-          
-          .hero-icon {{
-            font-size: 4rem;
-            margin-bottom: 1rem;
-          }}
-          
-          .hero-title {{
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-          }}
-          
-          .hero-subtitle {{
-            font-size: 1.1rem;
-            opacity: 0.8;
-            margin-bottom: 2rem;
-          }}
-          
-          .hero-stats {{
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-          }}
-          
-          .hero-stat {{
-            text-align: center;
-            padding: 1.5rem;
-            border-radius: 12px;
-            min-width: 120px;
-            border: 1px solid;
-          }}
-          
-          @media (prefers-color-scheme: light) {{
-            .hero-stat {{
-              background: #ffffff;
-              border-color: #e2e8f0;
-            }}
-          }}
-          
-          @media (prefers-color-scheme: dark) {{
-            .hero-stat {{
-              background: rgba(255, 255, 255, 0.05);
-              border-color: rgba(255, 255, 255, 0.1);
-            }}
-          }}
-          
-          .hero-stat-value {{
-            font-size: 2rem;
-            font-weight: 700;
-            color: #3b82f6;
-            margin-bottom: 0.5rem;
-          }}
-          
-          .hero-stat-label {{
-            font-size: 0.9rem;
-            opacity: 0.8;
-          }}
-          
-          .pulse {{
-            animation: pulse 2s infinite;
-          }}
-          
-          @keyframes pulse {{
-            0%, 100% {{ opacity: 1; }}
-            50% {{ opacity: 0.7; }}
-          }}
-          
-          /* Additional sidebar styling for better text visibility */
-          
-          /* Sidebar radio buttons */
-          [data-testid="stSidebar"] .stRadio > div {{
-            color: inherit !important;
-          }}
-          
-          [data-testid="stSidebar"] .stRadio label {{
-            color: inherit !important;
-          }}
-          
-          /* Sidebar selectbox */
-          [data-testid="stSidebar"] .stSelectbox > div > div {{
-            color: inherit !important;
-          }}
-          
-          /* Sidebar text input */
-          [data-testid="stSidebar"] .stTextInput > div > div > input {{
-            color: inherit !important;
-          }}
-          
-          /* Sidebar button text */
-          [data-testid="stSidebar"] .stButton > button {{
-            color: #ffffff !important;
-            background: #3b82f6 !important;
-          }}
-          
-          /* Sidebar expander */
-          [data-testid="stSidebar"] .streamlit-expanderHeader {{
-            color: inherit !important;
-            background: rgba(255, 255, 255, 0.1) !important;
-          }}
-          
-          /* Force inherit color for all sidebar children */
-          [data-testid="stSidebar"] * {{
-            color: inherit !important;
-          }}
-          
-          /* Override any Streamlit defaults */
-          @media (prefers-color-scheme: light) {{
-            [data-testid="stSidebar"] * {{
-              color: #1a202c !important;
-            }}
-          }}
-          
-          @media (prefers-color-scheme: dark) {{
-            [data-testid="stSidebar"] * {{
-              color: #ffffff !important;
-            }}
-          }}
-          
-          /* Responsive */
-          @media (max-width: 768px) {{
-            .block-container {{ padding: 1rem !important; }}
-            .hero-section {{ padding: 2rem 1rem !important; }}
-            .kpi-grid {{ grid-template-columns: 1fr; }}
-            .hero-stats {{ flex-direction: column; gap: 1rem; }}
-          }}
-        </style>
-        """
+    # Force cache refresh with timestamp
+    import time
+    cache_buster = int(time.time())
     
-    # Use cached CSS
-    st.markdown(st.session_state.cached_css, unsafe_allow_html=True)
+    css = f"""
+    <style>
+      /* Cache buster: {cache_buster} */
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+      
+      /* Dark/Light mode detection */
+      :root {{
+        /* Auto-detect system theme */
+        color-scheme: light dark;
+      }}
+      
+      /* Light theme variables */
+      :root {{
+        --bg-primary-light: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --bg-glass-light: rgba(255, 255, 255, 0.85);
+        --bg-glass-hover-light: rgba(255, 255, 255, 0.95);
+        --bg-card-light: rgba(255, 255, 255, 0.9);
+        --bg-card-hover-light: rgba(255, 255, 255, 0.95);
+        --glass-border-light: rgba(0, 0, 0, 0.1);
+        --glass-shadow-light: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+        --text-primary-light: #1a1a1a;
+        --text-secondary-light: #4a5568;
+        --text-muted-light: #718096;
+      }}
+      
+      /* Dark theme variables */
+      :root {{
+        --bg-primary-dark: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --bg-glass-dark: rgba(255, 255, 255, 0.08);
+        --bg-glass-hover-dark: rgba(255, 255, 255, 0.12);
+        --bg-card-dark: rgba(255, 255, 255, 0.1);
+        --bg-card-hover-dark: rgba(255, 255, 255, 0.15);
+        --glass-border-dark: rgba(255, 255, 255, 0.2);
+        --glass-shadow-dark: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        --text-primary-dark: #ffffff;
+        --text-secondary-dark: rgba(255, 255, 255, 0.8);
+        --text-muted-dark: rgba(255, 255, 255, 0.6);
+      }}
+      
+      /* Apply theme based on system preference */
+      @media (prefers-color-scheme: light) {{
+        :root {{
+          --bg-primary: var(--bg-primary-light);
+          --bg-glass: var(--bg-glass-light);
+          --bg-glass-hover: var(--bg-glass-hover-light);
+          --bg-card: var(--bg-card-light);
+          --bg-card-hover: var(--bg-card-hover-light);
+          --glass-border: var(--glass-border-light);
+          --glass-shadow: var(--glass-shadow-light);
+          --text-primary: var(--text-primary-light);
+          --text-secondary: var(--text-secondary-light);
+          --text-muted: var(--text-muted-light);
+        }}
+        
+        body, .stApp, [data-testid="stAppViewContainer"] {{
+          background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%) !important;
+          color: #1a1a1a !important;
+        }}
+        
+        section[data-testid="stSidebar"] {{
+          background-color: #f7fafc !important;
+        }}
+        
+        section[data-testid="stSidebar"] > div {{
+          background-color: #ffffff !important;
+          border-right: 1px solid #e2e8f0;
+        }}
+      }}
+      
+      @media (prefers-color-scheme: dark) {{
+        :root {{
+          --bg-primary: var(--bg-primary-dark);
+          --bg-glass: var(--bg-glass-dark);
+          --bg-glass-hover: var(--bg-glass-hover-dark);
+          --bg-card: var(--bg-card-dark);
+          --bg-card-hover: var(--bg-card-hover-dark);
+          --glass-border: var(--glass-border-dark);
+          --glass-shadow: var(--glass-shadow-dark);
+          --text-primary: var(--text-primary-dark);
+          --text-secondary: var(--text-secondary-dark);
+          --text-muted: var(--text-muted-dark);
+        }}
+        
+        body, .stApp, [data-testid="stAppViewContainer"] {{
+          background: #0e1117 !important;
+          color: #ffffff !important;
+        }}
+        
+        section[data-testid="stSidebar"] {{
+          background-color: #0e1117 !important;
+        }}
+        
+        section[data-testid="stSidebar"] > div {{
+          background-color: #262730 !important;
+        }}
+      }}
+      
+      /* Common variables */
+      :root {{
+        --brand-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --brand-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --brand-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --brand-warning: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --brand-danger: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        --brand-info: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        
+        --radius: 16px;
+        --radius-lg: 24px;
+        --radius-xl: 32px;
+        --spacing: 1.5rem;
+        --glass-blur: blur(8px);
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      }}
+      
+      /* Force theme adaptation for Streamlit components */
+      .stSelectbox > div > div,
+      .stNumberInput > div > div > input,
+      .stTextInput > div > div > input,
+      .stTextArea > div > div > textarea,
+      .stDateInput > div > div > input,
+      .stTimeInput > div > div > input,
+      .stMultiSelect > div > div,
+      .stSlider > div > div > div,
+      .stRadio > div,
+      .stCheckbox > div {{
+        background-color: var(--bg-glass) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--glass-border) !important;
+        backdrop-filter: var(--glass-blur);
+      }}
+      
+      /* Global styles */
+      * {{
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }}
+      
+      html, body, [class^="css"] {{
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-feature-settings: 'cv01', 'cv03', 'cv04', 'cv11';
+        scroll-behavior: smooth;
+      }}
+      
+      .block-container {{
+        padding-top: 1rem;
+        padding-bottom: 3rem;
+        max-width: 1400px;
+        margin: 0 auto;
+      }}
+      
+      /* Glassmorphism base class */
+      .glass {{
+        background: var(--bg-glass);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+        transition: var(--transition);
+      }}
+      
+      .glass:hover {{
+        background: var(--bg-glass-hover);
+        transform: translateY(-2px);
+        box-shadow: var(--glass-shadow);
+      }}
+      
+      /* Hero Section */
+      .hero-section {{
+        background: var(--bg-glass);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-xl);
+        padding: 4rem 2rem;
+        margin: -1rem -1rem 3rem -1rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }}
+      
+      .hero-brand {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }}
+      
+      .hero-icon {{
+        width: 80px;
+        height: 80px;
+        background: var(--brand-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        box-shadow: var(--glass-shadow);
+        animation: float 6s ease-in-out infinite;
+      }}
+      
+      @keyframes float {{
+        0%, 100% {{ transform: translateY(0px); }}
+        50% {{ transform: translateY(-10px); }}
+      }}
+      
+      .hero-title {{
+        font-size: 3.5rem;
+        font-weight: 900;
+        color: var(--text-primary);
+        line-height: 1.2;
+        margin-bottom: 1rem;
+      }}
+      
+      .hero-subtitle {{
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        margin-bottom: 2rem;
+      }}
+      
+      .hero-stats {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }}
+      
+      .hero-stat-value {{
+        font-size: 2.5rem;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-primary);
+      }}
+      
+      .hero-stat-label {{
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }}
+      
+      /* KPI Cards */
+      .kpi-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+      }}
+      
+      .kpi-card {{
+        background: var(--bg-glass);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition-bounce);
+        cursor: pointer;
+      }}
+      
+      .kpi-card:hover {{
+        transform: translateY(-8px) scale(1.02);
+        background: var(--bg-card-hover);
+        box-shadow: var(--glass-shadow);
+      }}
+      
+      .kpi-header {{
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }}
+      
+      .kpi-icon {{
+        width: 60px;
+        height: 60px;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+      }}
+      
+      .kpi-icon.cash {{ background: var(--brand-success); }}
+      .kpi-icon.bank {{ background: var(--brand-info); }}
+      .kpi-icon.people {{ background: var(--brand-primary); }}
+      .kpi-icon.pieces {{ background: var(--brand-warning); }}
+      .kpi-icon.debt {{ background: var(--brand-danger); }}
+      
+      .kpi-label {{
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+      }}
+      
+      .kpi-value {{
+        font-size: 2.5rem;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-primary);
+        line-height: 1;
+        margin-bottom: 0.5rem;
+      }}
+      
+      .kpi-hint {{
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }}
+      
+      .kpi-trend {{
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 999px;
+        background: var(--bg-glass);
+      }}
+      
+      .kpi-trend.up {{ color: #4ade80; }}
+      .kpi-trend.down {{ color: #f87171; }}
+      
+      /* Content Cards */
+      .content-card {{
+        background: var(--bg-glass);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        margin-bottom: 2rem;
+        overflow: hidden;
+        transition: var(--transition);
+      }}
+      
+      .card-header {{
+        padding: 2rem;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--glass-border);
+      }}
+      
+      .card-title {{
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }}
+      
+      .card-subtitle {{
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin: 0.5rem 0 0 0;
+      }}
+      
+      .card-content {{
+        padding: 2rem;
+      }}
+      
+      /* Session Items */
+      .session-item {{
+        background: var(--bg-card);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        transition: var(--transition);
+        margin-bottom: 1rem;
+      }}
+      
+      .session-item:hover {{
+        background: var(--bg-card-hover);
+        transform: translateX(8px);
+      }}
+      
+      /* Utilities */
+      .pulse {{
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }}
+      
+      @keyframes pulse {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.5; }}
+      }}
+      
+      /* Hide default Streamlit elements */
+      #MainMenu {{ visibility: hidden; }}
+      footer {{ visibility: hidden; }}
+      .stDeployButton {{ display: none; }}
+      
+      /* Enhanced dataframes */
+      [data-testid="stDataFrame"] {{
+        background: var(--bg-glass);
+        backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--glass-shadow);
+      }}
+      
+      /* ===== SIDEBAR OKUNABILIRLIK FIXI ===== */
+      /* Sidebar için kalın, net yazı renkleri */
+      section[data-testid="stSidebar"] *,
+      .css-1d391kg *,
+      .css-1lcbmhc * {{
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+      }}
+      
+      section[data-testid="stSidebar"] h1,
+      section[data-testid="stSidebar"] h2,
+      section[data-testid="stSidebar"] h3,
+      section[data-testid="stSidebar"] .stRadio label,
+      section[data-testid="stSidebar"] .stSelectbox label,
+      section[data-testid="stSidebar"] .stButton button,
+      .css-1d391kg h1, .css-1d391kg h2, .css-1d391kg h3,
+      .css-1lcbmhc h1, .css-1lcbmhc h2, .css-1lcbmhc h3 {{
+        color: #1a1a1a !important;
+        font-weight: 700 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+      }}
+      
+      /* Dark mode'da sidebar yazı renkleri */
+      @media (prefers-color-scheme: dark) {{
+        section[data-testid="stSidebar"] *,
+        .css-1d391kg *,
+        .css-1lcbmhc * {{
+          color: #ffffff !important;
+          font-weight: 600 !important;
+        }}
+        
+        section[data-testid="stSidebar"] h1,
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3,
+        section[data-testid="stSidebar"] .stRadio label,
+        section[data-testid="stSidebar"] .stSelectbox label,
+        section[data-testid="stSidebar"] .stButton button,
+        .css-1d391kg h1, .css-1d391kg h2, .css-1d391kg h3,
+        .css-1lcbmhc h1, .css-1lcbmhc h2, .css-1lcbmhc h3 {{
+          color: #ffffff !important;
+          font-weight: 700 !important;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+        }}
+      }}
+      
+      /* Responsive design */
+      @media (max-width: 768px) {{
+        .hero-title {{ font-size: 2.5rem; }}
+        .kpi-grid {{ grid-template-columns: 1fr; }}
+        .hero-stats {{ grid-template-columns: repeat(2, 1fr); }}
+        .card-header, .card-content {{ padding: 1.5rem; }}
+      }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
     # Ultra-Modern Hero Section
     st.markdown(
@@ -699,83 +695,6 @@ def get_models():
 
 # Get cached models - use these throughout the app
 MODELS = get_models()
-
-# Extract models for easier access
-Person = MODELS['Person']
-Course = MODELS['Course']
-SessionModel = MODELS['SessionModel']
-Enrollment = MODELS['Enrollment']
-Payment = MODELS['Payment']
-Expense = MODELS['Expense']
-Charge = MODELS['Charge']
-Piece = MODELS['Piece']
-Material = MODELS['Material']
-StockMovement = MODELS['StockMovement']
-DailyNote = MODELS['DailyNote']
-
-# ============================ CACHED DATA FUNCTIONS ============================
-@st.cache_data(ttl=300)  # Cache for 5 minutes
-def get_cached_people():
-    """Get all people with caching"""
-    with Session(ENGINE) as session:
-        people = session.exec(select(Person)).all()
-        return [{"id": p.id, "name": p.name, "phone": p.phone, "instagram": p.instagram} for p in people]
-
-@st.cache_data(ttl=300)
-def get_cached_courses():
-    """Get all courses with caching"""
-    with Session(ENGINE) as session:
-        courses = session.exec(select(Course)).all()
-        return [{"id": c.id, "name": c.name, "default_price": c.default_price} for c in courses]
-
-@st.cache_data(ttl=60)  # Cache for 1 minute (more frequent updates)
-def get_cached_enrollments():
-    """Get all enrollments with caching"""
-    with Session(ENGINE) as session:
-        enrollments = session.exec(select(Enrollment)).all()
-        return [{"id": e.id, "person_id": e.person_id, "session_id": e.session_id, "status": e.status} for e in enrollments]
-
-@st.cache_data(ttl=600)  # Cache for 10 minutes
-def get_cached_pieces():
-    """Get all pieces with caching"""
-    with Session(ENGINE) as session:
-        pieces = session.exec(select(Piece)).all()
-        return [{"id": p.id, "person_id": p.person_id, "title": p.title, "stage": p.stage} for p in pieces]
-
-@st.cache_data(ttl=300)
-def get_cached_daily_notes():
-    """Get daily notes with caching"""
-    with Session(ENGINE) as session:
-        notes = session.exec(select(DailyNote).order_by(DailyNote.date_.desc())).all()
-        return [{"id": n.id, "date_": str(n.date_), "note": n.note} for n in notes]
-
-@st.cache_data(ttl=300)
-def get_cached_kpi_data():
-    """Get KPI data with caching"""
-    with Session(ENGINE) as session:
-        total_people = session.exec(select(func.count(Person.id))).first() or 0
-        total_courses = session.exec(select(func.count(Course.id))).first() or 0
-        total_pieces = session.exec(select(func.count(Piece.id))).first() or 0
-        total_cash = session.exec(select(func.sum(Payment.amount)).where(Payment.method == "cash")).first() or 0
-        total_bank = session.exec(select(func.sum(Payment.amount)).where(Payment.method == "iban")).first() or 0
-        
-        return {
-            "total_people": total_people,
-            "total_courses": total_courses,
-            "total_pieces": total_pieces,
-            "total_cash": float(total_cash),
-            "total_bank": float(total_bank)
-        }
-
-# Function to clear all caches when data is modified
-def clear_data_caches():
-    """Clear all data caches when data is modified"""
-    get_cached_people.clear()
-    get_cached_courses.clear()
-    get_cached_enrollments.clear()
-    get_cached_pieces.clear()
-    get_cached_daily_notes.clear()
-    get_cached_kpi_data.clear()
 Person = MODELS['Person']
 Course = MODELS['Course']
 SessionModel = MODELS['SessionModel']
@@ -1300,8 +1219,18 @@ def page_courses_sessions():
 def page_notes():
     st.header("📝 Günlük Notlar")
     
-    # Use cached data instead of direct queries
-    cached_notes = get_cached_daily_notes()
+    # Force table creation if needed
+    try:
+        with get_session() as test_s:
+            test_s.exec(select(DailyNote).limit(1)).all()
+    except Exception:
+        try:
+            from sqlmodel import SQLModel
+            SQLModel.metadata.create_all(ENGINE)
+            st.success("Not tablosu oluşturuldu!")
+        except Exception as e:
+            st.error(f"Tablo oluşturulamadı: {e}")
+            return
     
     st.subheader("🆕 Yeni Not Ekle")
     with st.form("add_note"):
@@ -1320,11 +1249,10 @@ def page_notes():
                     new_note = DailyNote(date_=note_date, note=note_text.strip())
                     s.add(new_note)
                     s.commit()
-                    st.success("✅ Not başarıyla kaydedildi!")
-                    # Clear cache to refresh data
-                    clear_data_caches()
+                    st.success("Not kaydedildi!")
+                    st.rerun()
         except Exception as e:
-            st.error(f"❌ Hata: {e}")
+            st.error(f"Hata: {e}")
     
     st.subheader("📋 Mevcut Notlar")
     
@@ -1335,40 +1263,98 @@ def page_notes():
     with col2:
         date_filter = st.date_input("Tarih filtresi (boş bırakabilirsiniz)", value=None)
     
-    # Get notes from cache and apply filters
+    # Get notes with filters
     try:
-        notes_data = cached_notes
-        
-        # Apply date filter
-        if date_filter:
-            notes_data = [n for n in notes_data if n["date_"] == str(date_filter)]
-        
-        # Apply search filter
-        if search_text:
-            notes_data = [n for n in notes_data if search_text.lower() in n["note"].lower()]
-        
-        if notes_data:
-            for note_data in notes_data:
-                with st.expander(f"📝 {note_data['date_']} - {note_data['note'][:50]}..."):
-                    st.write(f"**Tarih:** {note_data['date_']}")
-                    st.write(f"**Not:**")
-                    st.write(note_data["note"])
-                    
-                    # Simple action buttons for performance
-                    if st.button(f"🗑️ Sil {note_data['id']}", key=f"delete_{note_data['id']}"):
-                        try:
-                            with get_session() as del_s:
-                                note_to_delete = del_s.get(DailyNote, note_data['id'])
-                                if note_to_delete:
-                                    del_s.delete(note_to_delete)
-                                    del_s.commit()
-                                    st.success("Not silindi!")
-                                    clear_data_caches()
+        with get_session() as s:
+            query = select(DailyNote).order_by(DailyNote.date_.desc())
+            
+            if date_filter:
+                query = query.where(DailyNote.date_ == date_filter)
+            
+            notes = s.exec(query).all()
+            
+            # Filter by search text
+            if search_text:
+                notes = [n for n in notes if search_text.lower() in n.note.lower()]
+            
+            if notes:
+                for note in notes:
+                    with st.expander(f"📝 {note.date_.strftime('%d %B %Y (%A)')} - {note.note[:50]}..."):
+                        st.write(f"**Tarih:** {note.date_.strftime('%d %B %Y (%A)')}")
+                        st.write(f"**Not:**")
+                        st.write(note.note)
+                        st.write(f"**Oluşturulma:** {note.created_at.strftime('%d.%m.%Y %H:%M')}")
+                        if note.updated_at != note.created_at:
+                            st.write(f"**Güncellenme:** {note.updated_at.strftime('%d.%m.%Y %H:%M')}")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            if st.button("✏️ Düzenle", key=f"edit_{note.id}"):
+                                st.session_state[f"editing_{note.id}"] = True
+                                st.rerun()
+                        
+                        with col2:
+                            if st.button("🗑️ Sil", key=f"delete_{note.id}", type="secondary"):
+                                st.session_state[f"confirm_delete_{note.id}"] = True
+                        
+                        # Edit form
+                        if st.session_state.get(f"editing_{note.id}"):
+                            with st.form(f"edit_form_{note.id}"):
+                                new_date = st.date_input("Tarih", value=note.date_, key=f"edit_date_{note.id}")
+                                new_text = st.text_area("Not", value=note.note, height=100, key=f"edit_text_{note.id}")
+                                
+                                col_save, col_cancel = st.columns(2)
+                                with col_save:
+                                    save_edit = st.form_submit_button("💾 Kaydet", type="primary")
+                                with col_cancel:
+                                    cancel_edit = st.form_submit_button("❌ İptal")
+                                
+                                if save_edit and new_text.strip():
+                                    try:
+                                        with get_session() as edit_s:
+                                            # Get fresh instance in new session
+                                            fresh_note = edit_s.get(DailyNote, note.id)
+                                            if fresh_note:
+                                                fresh_note.date_ = new_date
+                                                fresh_note.note = new_text.strip()
+                                                fresh_note.updated_at = datetime.now()
+                                                edit_s.commit()
+                                                st.success("Not güncellendi!")
+                                                del st.session_state[f"editing_{note.id}"]
+                                                st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Güncelleme hatası: {e}")
+                                elif cancel_edit:
+                                    del st.session_state[f"editing_{note.id}"]
                                     st.rerun()
-                        except Exception as e:
-                            st.error(f"Silme hatası: {e}")
-        else:
-            st.info("Henüz not bulunmuyor. Yukarıdan yeni not ekleyebilirsiniz.")
+                        
+                        # Delete confirmation
+                        if st.session_state.get(f"confirm_delete_{note.id}"):
+                            st.error("Bu notu silmek istediğinizden emin misiniz?")
+                            
+                            col_yes, col_no = st.columns(2)
+                            with col_yes:
+                                if st.button("✅ Evet, Sil", key=f"confirm_yes_{note.id}", type="primary"):
+                                    try:
+                                        with get_session() as del_s:
+                                            # Get fresh instance in new session
+                                            fresh_note = del_s.get(DailyNote, note.id)
+                                            if fresh_note:
+                                                del_s.delete(fresh_note)
+                                                del_s.commit()
+                                                st.success("Not silindi!")
+                                                del st.session_state[f"confirm_delete_{note.id}"]
+                                                st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Silme hatası: {e}")
+                            
+                            with col_no:
+                                if st.button("❌ Hayır", key=f"confirm_no_{note.id}"):
+                                    del st.session_state[f"confirm_delete_{note.id}"]
+                                    st.rerun()
+            else:
+                st.info("Henüz not bulunmuyor. Yukarıdan yeni not ekleyebilirsiniz.")
     
     except Exception as e:
         st.error(f"Notlar yüklenirken hata: {e}")
@@ -2159,81 +2145,87 @@ def logout():
     st.rerun()
 
 def main():
-    # Initialize session state for performance optimization
-    if 'app_initialized' not in st.session_state:
-        st.session_state.app_initialized = True
-        st.session_state.data_cache = {}
-        st.session_state.last_cache_update = datetime.now()
-    
     # Check authentication first
     if not st.session_state.get("authenticated", False):
         login_page()
         return
     
-    # Initialize database tables only once per session
-    if 'db_initialized' not in st.session_state:
-        try:
-            # Force metadata recreation and table creation
-            from sqlmodel import SQLModel
-            SQLModel.metadata.clear()
-            SQLModel.metadata.create_all(ENGINE)
-            
-            # Extra: Force daily_note table creation with raw SQL if needed
-            try:
-                with get_session() as test_s:
-                    test_s.exec(select(DailyNote).limit(1)).all()
-            except Exception:
-                # Table doesn't exist, create it manually
-                from sqlmodel import text
-                with get_session() as create_s:
-                    if "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
-                        create_s.exec(text("""
-                            CREATE TABLE IF NOT EXISTS daily_note (
-                                id SERIAL PRIMARY KEY,
-                                date_ DATE NOT NULL UNIQUE,
-                                note TEXT NOT NULL,
-                                created_at TIMESTAMP DEFAULT NOW(),
-                                updated_at TIMESTAMP DEFAULT NOW()
-                            );
-                            CREATE INDEX IF NOT EXISTS idx_daily_note_date ON daily_note(date_);
-                        """))
-                    else:
-                        create_s.exec(text("""
-                            CREATE TABLE IF NOT EXISTS daily_note (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                date_ DATE NOT NULL UNIQUE,
-                                note TEXT NOT NULL,
-                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                            );
-                            CREATE INDEX IF NOT EXISTS idx_daily_note_date ON daily_note(date_);
-                        """))
-                    create_s.commit()
-            
-            st.session_state.db_initialized = True
-        except Exception as e:
-            # If DB init fails, just continue silently
-            pass
+    # Initialize database tables (including new tables)
+    try:
+        # Force metadata recreation and table creation
+        from sqlmodel import SQLModel
+        SQLModel.metadata.clear()
+        SQLModel.metadata.create_all(ENGINE)
         
-    # Configure page only once
-    if 'page_configured' not in st.session_state:
-        st.set_page_config(
-            page_title=APP_TITLE, 
-            page_icon="🎨", 
-            layout="wide",
-            initial_sidebar_state="expanded"
-        )
-        st.session_state.page_configured = True
+        # Extra: Force daily_note table creation with raw SQL if needed
+        try:
+            with get_session() as test_s:
+                test_s.exec(select(DailyNote).limit(1)).all()
+        except Exception:
+            # Table doesn't exist, create it manually
+            from sqlmodel import text
+            with get_session() as create_s:
+                if "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
+                    create_s.exec(text("""
+                        CREATE TABLE IF NOT EXISTS daily_note (
+                            id SERIAL PRIMARY KEY,
+                            date_ DATE NOT NULL UNIQUE,
+                            note TEXT NOT NULL,
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            updated_at TIMESTAMP DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_daily_note_date ON daily_note(date_);
+                    """))
+                else:
+                    create_s.exec(text("""
+                        CREATE TABLE IF NOT EXISTS daily_note (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            date_ DATE NOT NULL UNIQUE,
+                            note TEXT NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_daily_note_date ON daily_note(date_);
+                    """))
+                create_s.commit()
+        
+        seed_minimal()  # Ensure basic data exists
+    except Exception as e:
+        # If DB init fails, just continue silently
+        pass
+        
+    # Force dark theme configuration
+    st.set_page_config(
+        page_title=APP_TITLE, 
+        page_icon="🎨", 
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     
-    # Load theme and scripts only once per session
-    if 'theme_loaded' not in st.session_state:
-        load_theme()
-        st.session_state.theme_loaded = True
-    # Initialize database only once
-    if 'app_db_initialized' not in st.session_state:
-        init_db()
-        seed_minimal()
-        st.session_state.app_db_initialized = True
+    # Force dark mode with additional JavaScript
+    st.markdown("""
+        <script>
+        // Force dark mode
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.body.classList.add('dark-mode');
+        
+        // Override any light mode settings
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (document.documentElement.getAttribute('data-theme') !== 'dark') {
+                        document.documentElement.setAttribute('data-theme', 'dark');
+                    }
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+        </script>
+    """, unsafe_allow_html=True)
+    
+    load_theme()
+    init_db()
+    seed_minimal()
 
     st.sidebar.title("🏺 Nehir Seramik")
     st.sidebar.write(f"Hoş geldin, {st.session_state.get('username', 'Kullanıcı')}!")
